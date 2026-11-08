@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="SK Computer & Education Centre">
+  <rect width="32" height="32" rx="7" fill="#0C2340"/>
+  <circle cx="16" cy="18" r="11" fill="#FFFDF8"/>
+  <path fill="#0C2340" d="M16 2.2 24.2 5.4 16 8.6 7.8 5.4Z"/>
+  <text x="10.2" y="22.4" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="11" fill="#1A4FAD">S</text>
+  <text x="20.2" y="22.4" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="11" fill="#E2B043">K</text>
+</svg>
