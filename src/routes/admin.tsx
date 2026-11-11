@@ -411,7 +411,7 @@ function AdminPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="min-h-12 rounded-2xl border border-line bg-ivory px-4 text-navy"
-            style={{ color: "#0c2340", WebkitTextFillColor: "#0c2340", backgroundColor: "#f4f0e6" }}
+            
             aria-label={en ? "Password" : "पासवर्ड"}
           />
           <button type="submit" className="min-h-11 rounded-full bg-navy px-5 font-semibold text-ivory touch-manipulation">
@@ -513,3 +513,356 @@ function AdminPage() {
                 {...tapProps("sign", () => void flipSign(!signOn))}
                 className="inline-flex min-h-12 items-center gap-3 touch-manipulation"
               >
+                <span className={`relative h-8 w-14 shrink-0 rounded-full ${signOn ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                  <span className={`absolute top-1 size-6 rounded-full bg-white shadow ${signOn ? "left-7" : "left-1"}`} />
+                </span>
+                <span className="font-plain text-lg font-bold text-navy">{signOn ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+              </button>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="font-plain text-base font-bold text-navy">{en ? "Applicant Signature" : "आवेदक हस्ताक्षर"}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={applicantOn}
+                {...tapProps("sign-applicant", () => void flipSignPart("applicant", !applicantOn))}
+                className="inline-flex min-h-12 items-center gap-3 touch-manipulation"
+              >
+                <span className={`relative h-8 w-14 shrink-0 rounded-full ${applicantOn ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                  <span className={`absolute top-1 size-6 rounded-full bg-white shadow ${applicantOn ? "left-7" : "left-1"}`} />
+                </span>
+                <span className="font-plain text-lg font-bold text-navy">{applicantOn ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+              </button>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="font-plain text-base font-bold text-navy">{en ? "Parent Signature" : "पेरेंट हस्ताक्षर"}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={parentOn}
+                {...tapProps("sign-parent", () => void flipSignPart("parent", !parentOn))}
+                className="inline-flex min-h-12 items-center gap-3 touch-manipulation"
+              >
+                <span className={`relative h-8 w-14 shrink-0 rounded-full ${parentOn ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                  <span className={`absolute top-1 size-6 rounded-full bg-white shadow ${parentOn ? "left-7" : "left-1"}`} />
+                </span>
+                <span className="font-plain text-lg font-bold text-navy">{parentOn ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 rounded-3xl border border-line bg-paper p-4">
+            <p className="font-plain text-lg font-bold text-navy">{en ? "Manager Signature" : "मैनेजर का हस्ताक्षर"}</p>
+            <p className="mt-1 max-w-xl text-sm text-muted">
+              {managerOn
+                ? en
+                  ? "Enabled. This signature is stored once and prints on the bottom right of every student form and every admin download."
+                  : "इनेबल है। यह हस्ताक्षर एक बार सेव रहता है और हर विद्यार्थी फ़ॉर्म तथा हर एडमिन डाउनलोड में नीचे दाईं ओर अपने आप आता है।"
+                : en
+                  ? "Disabled. Turn it on and upload the manager signature once. It then stays on every form."
+                  : "डिसेबल है। इसे चालू करके मैनेजर का हस्ताक्षर एक बार अपलोड करें। उसके बाद हर फ़ॉर्म पर रहेगा।"}
+            </p>
+            {managerImage ? (
+              <img src={managerImage} alt="" className="mt-3 h-16 max-w-48 rounded-lg border border-line bg-white object-contain p-1" />
+            ) : null}
+            <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy">
+              {en ? "Upload Signature" : "हस्ताक्षर अपलोड"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  void saveManagerFile(file);
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={managerOn}
+              {...tapProps("manager", () => void flipManager(!managerOn))}
+              className="mt-3 flex min-h-12 items-center gap-3 touch-manipulation"
+            >
+              <span className={`relative h-8 w-14 shrink-0 rounded-full ${managerOn ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                <span className={`absolute top-1 size-6 rounded-full bg-white shadow ${managerOn ? "left-7" : "left-1"}`} />
+              </span>
+              <span className="font-plain text-lg font-bold text-navy">{managerOn ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+            </button>
+            <ManagerPad
+              title={en ? "Digital Signature" : "डिजिटल हस्ताक्षर"}
+              clearLabel={en ? "Clear" : "साफ़"}
+              onInk={(image) => void keepPad(image)}
+            />
+            {padImage ? <img src={padImage} alt="" className="mt-2 h-14 max-w-48 bg-white object-contain" /> : null}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={padOn}
+              {...tapProps("manager-pad", () => void flipPad(!padOn))}
+              className="mt-2 inline-flex min-h-11 items-center gap-3 touch-manipulation"
+            >
+              <span className={`relative h-7 w-12 shrink-0 rounded-full ${padOn ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow ${padOn ? "left-5" : "left-0.5"}`} />
+              </span>
+              <span className="font-plain text-sm font-bold text-navy">{padOn ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+            </button>
+          </div>
+          <ul className="mt-4 grid grid-cols-4 gap-2">
+            {(
+              [
+                ["upload_photo", "photo", en ? "Photo" : "फोटो"],
+                ["upload_document", "document", en ? "Document" : "दस्तावेज़"],
+                ["upload_aadhaar", "aadhaar", en ? "Aadhaar" : "आधार"],
+                ["upload_signature", "signature", en ? "Signature" : "हस्ताक्षर"],
+              ] as const
+            ).map(([key, field, label]) => {
+              const on = uploads[field];
+              return (
+                <li key={key}>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    aria-label={label}
+                    {...tapProps(key, () => void flipUpload(key, field, !on))}
+                    className="flex min-h-11 w-full flex-col items-center justify-center gap-1 rounded-xl border border-line bg-paper px-1 py-2 touch-manipulation"
+                  >
+                    <span className="text-center font-plain text-[11px] font-bold leading-tight text-navy sm:text-sm">{label}</span>
+                    <span className={`relative h-7 w-12 shrink-0 rounded-full ${on ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                      <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow ${on ? "left-5" : "left-0.5"}`} />
+                    </span>
+                    <span className="text-[10px] font-bold text-navy">{on ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          </>
+        ) : tab === "trash" ? (
+          <p className="mt-4 text-sm text-muted">
+            {en
+              ? "Deleted forms sit here. Recover puts a form back in the table. Delete removes it forever."
+              : "डिलीट हुए फ़ॉर्म यहाँ हैं। रिकवर से फ़ॉर्म वापस टेबल में आ जाता है। डिलीट से वह हमेशा के लिए मिट जाता है।"}
+          </p>
+        ) : null}
+        {error ? <p className="mt-3 text-sm font-medium text-navy">{error}</p> : null}
+        <p className="mt-4 text-sm text-muted">
+          {tab === "live"
+            ? en
+              ? "Nothing opens until you tap View. The name is not a link."
+              : "व्यू पर टैप करने से पहले फ़ॉर्म नहीं खुलता। नाम पर लाइन नहीं है।"
+            : null}
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-navy">
+          <table className="w-full min-w-[52rem] border-collapse text-left text-sm lg:min-w-full">
+            <thead>
+              <tr className="bg-navy text-ivory">
+                {(tab === "live"
+                  ? en
+                    ? ["Serial", "Student Name", "Father Name", "Mobile", "Fee Status", "View", "Download", "Delete"]
+                    : ["क्रम", "विद्यार्थी का नाम", "पिता का नाम", "मोबाइल", "फीस स्थिति", "व्यू", "डाउनलोड", "डिलीट"]
+                  : en
+                    ? ["Serial", "Student Name", "Father Name", "Mobile", "Fee Status", "Recover", "Delete"]
+                    : ["क्रम", "विद्यार्थी का नाम", "पिता का नाम", "मोबाइल", "फीस स्थिति", "रिकवर", "डिलीट"]
+                ).map((head) => (
+                  <th key={head} className="border border-white/20 px-3 py-3 font-plain text-sm font-bold">
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.length === 0 ? (
+                <tr>
+                  <td colSpan={tab === "live" ? 8 : 7} className="border border-line px-3 py-4 text-muted">
+                    {en ? "Nothing in this list." : "इस सूची में कुछ नहीं।"}
+                  </td>
+                </tr>
+              ) : (
+                shown.map((row, index) => (
+                  <tr key={row.id} className={index % 2 ? "bg-ivory" : "bg-white"}>
+                    <td className="border border-line px-3 py-2 font-plain text-base font-bold text-navy">{row.serial}</td>
+                    <td className="border border-line px-3 py-2 text-navy">{row.student}</td>
+                    <td className="border border-line px-3 py-2 text-navy">{row.father || "—"}</td>
+                    <td className="border border-line px-3 py-2 text-navy">{row.mobile}</td>
+                    <td className="border border-line px-3 py-2 font-semibold text-navy">{row.fee || "Not Paid"}</td>
+                    <td className="border border-line px-3 py-2">
+                      {tab === "live" ? (
+                        <button
+                          type="button"
+                          {...tapProps(`view-${row.id}`, () => {
+                            setViewId(row.id);
+                            void show(row.id);
+                          })}
+                          className={`min-h-11 rounded-full px-4 font-semibold touch-manipulation ${viewId === row.id ? "bg-navy text-ivory" : "border border-navy bg-white text-navy"}`}
+                        >
+                          {en ? "View Form" : "फ़ॉर्म देखें"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          {...tapProps(`recover-${row.id}`, () => void runRow(row.id, () => adminRecover({ data: { token, id: row.id } })))}
+                          className="min-h-11 rounded-full bg-navy px-4 font-semibold text-ivory touch-manipulation"
+                        >
+                          {en ? "Recover" : "रिकवर"}
+                        </button>
+                      )}
+                    </td>
+                    {tab === "live" ? (
+                      <td className="border border-line px-3 py-2">
+                        <a
+                          href={`/api/admission-pdf?${new URLSearchParams({ token, id: String(row.id), docs: "1" }).toString()}`}
+                          download={`SK-registration-${row.serial}-with-documents.pdf`}
+                          {...tapProps(`down-${row.id}`, () => setDownId(row.id))}
+                          className={`inline-flex min-h-11 items-center rounded-full px-4 font-semibold touch-manipulation ${downId === row.id ? "bg-navy text-ivory" : "border border-navy bg-white text-navy"}`}
+                        >
+                          {en ? "Download" : "डाउनलोड"}
+                        </a>
+                      </td>
+                    ) : null}
+                    <td className="border border-line px-3 py-2">
+                      <button
+                        type="button"
+                        disabled={busyId === row.id}
+                        {...tapProps(`del-${row.id}`, () => pressRow(Number(row.id)))}
+                        className="min-h-11 rounded-full border border-[#c5161d] px-4 font-semibold text-[#c5161d] touch-manipulation"
+                      >
+                        {busyId === row.id ? (en ? "Please Wait" : "रुकें") : en ? "Delete" : "डिलीट"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <form onSubmit={savePassword} className="mt-8 flex flex-wrap gap-3">
+          <input
+            type="password"
+            value={nextPassword}
+            onChange={(event) => setNextPassword(event.target.value)}
+            placeholder={en ? "New Password" : "नया पासवर्ड"}
+            className="min-h-12 flex-1 rounded-2xl border border-line bg-ivory px-4 text-navy"
+            
+          />
+          <button type="submit" className="min-h-11 rounded-full border border-line px-5 font-semibold text-navy">
+            {en ? "Change Password" : "पासवर्ड बदलें"}
+          </button>
+        </form>
+        <button
+          type="button"
+          onClick={() => {
+            window.sessionStorage.removeItem(TOKEN);
+            setToken("");
+            setOpen(null);
+          }}
+          className="mt-4 text-sm font-semibold text-gold-deep"
+        >
+          {en ? "Lock" : "बंद करें"}
+        </button>
+      </div>
+      {open && tab === "live" ? (
+        <div className="mt-8" id="admin-form">
+          <div className="no-print mb-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="min-h-11 rounded-full bg-navy px-5 font-semibold text-ivory"
+            >
+              {en ? "Print Form And Documents" : "फ़ॉर्म और दस्तावेज़ एक साथ प्रिंट"}
+            </button>
+            <button type="button" onClick={() => { setOpen(null); setViewId(0); }} className="min-h-11 rounded-full border border-line px-5 font-semibold text-navy">
+              {en ? "Close Form" : "फ़ॉर्म बंद करें"}
+            </button>
+          </div>
+          <FilledForm form={{ ...open.form, studentSign: signOn && applicantOn ? open.form.studentSign : "", parentSign: signOn && parentOn ? open.form.parentSign : "" }} serial={open.serial} recordId={open.id} lang={lang} downloads downloadToken={token} managerSign={managerOn ? managerImage : ""} managerPad={padOn ? padImage : ""} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ManagerPad({ title, clearLabel, onInk }: { title: string; clearLabel: string; onInk: (image: string) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const onInkRef = useRef(onInk);
+  const clearRef = useRef<() => void>(() => {});
+  onInkRef.current = onInk;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.lineWidth = 3.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#0c2340";
+    let drawing = false;
+
+    const place = (clientX: number, clientY: number) => {
+      const box = canvas.getBoundingClientRect();
+      return {
+        x: ((clientX - box.left) / (box.width || 1)) * canvas.width,
+        y: ((clientY - box.top) / (box.height || 1)) * canvas.height,
+      };
+    };
+    const down = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      event.preventDefault();
+      const pen = place(event.clientX, event.clientY);
+      ctx.beginPath();
+      ctx.moveTo(pen.x, pen.y);
+      drawing = true;
+    };
+    const move = (event: PointerEvent) => {
+      if (!drawing) return;
+      event.preventDefault();
+      const pen = place(event.clientX, event.clientY);
+      ctx.lineTo(pen.x, pen.y);
+      ctx.stroke();
+    };
+    const up = () => {
+      if (!drawing) return;
+      drawing = false;
+      onInkRef.current(canvas.toDataURL("image/png"));
+    };
+    clearRef.current = () => {
+      drawing = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 3.4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#0c2340";
+      onInkRef.current("");
+    };
+    canvas.addEventListener("pointerdown", down);
+    canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointercancel", up);
+    return () => {
+      canvas.removeEventListener("pointerdown", down);
+      canvas.removeEventListener("pointermove", move);
+      canvas.removeEventListener("pointerup", up);
+      canvas.removeEventListener("pointercancel", up);
+    };
+  }, []);
+
+  return (
+    <div className="mt-4 max-w-sm">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-navy">{title}</span>
+        <button type="button" onClick={() => clearRef.current()} className="min-h-11 px-2 text-sm font-semibold text-[#c5161d]">
+          {clearLabel}
+        </button>
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={640}
+        height={160}
+        className="h-24 w-full touch-none rounded-2xl border border-dashed border-gold bg-ivory"
+      />
+    </div>
+  );
+}
