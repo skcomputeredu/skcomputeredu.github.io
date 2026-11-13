@@ -4,6 +4,21 @@ import { PHONE_DISPLAY } from "@/lib/site";
 import type { Lang } from "@/lib/i18n";
 import { Phone } from "lucide-react";
 
+export async function saveServerPdf(url: string, name: string) {
+  const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) return;
+  const blob = await response.blob();
+  const fileUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = fileUrl;
+  link.download = name;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(fileUrl), 4000);
+}
+
 const qualHi: Record<string, string> = {
   "Below Class 6": "कक्षा 6 से नीचे",
   "Class 6": "कक्षा 6",
@@ -160,13 +175,18 @@ export function FilledForm({
           {paid ? "Paid" : "Not paid"}
         </p>
         {downloads && serial && downloadToken ? (
-          <a
-            href={`/api/admission-pdf?${new URLSearchParams({ token: downloadToken, id: String(fileId), docs: "1" }).toString()}`}
-            download={`SK-registration-${serial}-with-documents.pdf`}
+          <button
+            type="button"
+            onClick={() => {
+              void saveServerPdf(
+                `/api/admission-pdf?${new URLSearchParams({ token: downloadToken, id: String(fileId), docs: "1" }).toString()}`,
+                `SK-registration-${serial}-with-documents.pdf`,
+              );
+            }}
             className="no-print inline-flex min-h-11 items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy touch-manipulation"
           >
             {en ? "Download form" : "फ़ॉर्म डाउनलोड"}
-          </a>
+          </button>
         ) : null}
       </div>
       <dl className="a4-fields-stack mt-4">
@@ -252,14 +272,19 @@ export function FilledForm({
         </div>
       </div>
       {downloads && downloadToken && fileId ? (
-        <a
-          href={`/api/admission-pdf?${new URLSearchParams({ token: downloadToken, id: String(fileId), layout: "detail" }).toString()}`}
-          download={`SK-form-${serial || fileId}.pdf`}
+        <button
+          type="button"
+          onClick={() => {
+            void saveServerPdf(
+              `/api/admission-pdf?${new URLSearchParams({ token: downloadToken, id: String(fileId), layout: "detail" }).toString()}`,
+              `SK-form-${serial || fileId}.pdf`,
+            );
+          }}
           style={{ textTransform: "none" }}
           className="no-print mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-navy px-5 text-base font-semibold text-ivory touch-manipulation"
         >
           Save as PDF
-        </a>
+        </button>
       ) : null}
       </div>
     </article>
