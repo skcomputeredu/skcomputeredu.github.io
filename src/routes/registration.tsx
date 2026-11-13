@@ -3,7 +3,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "reac
 import { WhatsAppIcon } from "@/components/bits";
 import { FeeMethods } from "@/components/fee-pay";
 import { FilledForm } from "@/components/filled-form";
-import { readFeeGate, readManagerSign, readSignGate, readUploadGates, submitAdmission, type AdmissionForm } from "@/lib/admissions";
+import { readFeeGate, readManagerSign, readSignGate, readUploadGates, saveUploadChunk, submitAdmission, type AdmissionForm } from "@/lib/admissions";
 import { courses, presentCourse } from "@/lib/courses";
 import { useI18n } from "@/lib/i18n";
 import { PHONE_TEL, whatsappLink } from "@/lib/site";
@@ -239,12 +239,11 @@ function RegistrationPage() {
     const jpeg = mime === "image/jpeg" || mime === "image/jpg" || mime === "image/pjpeg" || ["jpg", "jpeg", "jpe", "jfif"].includes(ext);
     const png = mime === "image/png" || ext === "png";
     const webp = mime === "image/webp" || ext === "webp";
-    const heic = mime.includes("heic") || mime.includes("heif") || ["heic", "heif"].includes(ext);
-    const image = jpeg || png || webp || heic || mime.startsWith("image/");
+    const image = jpeg || png || webp;
     const pdf = mime === "application/pdf" || ext === "pdf";
     const allowed = kind === "doc" || kind === "aadhaar" ? image || pdf : image;
-    const formats = kind === "doc" || kind === "aadhaar" ? "JPG, JPEG, PNG, WEBP, HEIC या PDF" : "JPG, JPEG, PNG, WEBP या HEIC";
-    const formatsEn = kind === "doc" || kind === "aadhaar" ? "JPG, JPEG, PNG, WEBP, HEIC or PDF" : "JPG, JPEG, PNG, WEBP or HEIC";
+    const formats = kind === "doc" || kind === "aadhaar" ? "JPG, JPEG, PNG, WEBP या PDF" : "JPG, JPEG, PNG या WEBP";
+    const formatsEn = kind === "doc" || kind === "aadhaar" ? "JPG, JPEG, PNG, WEBP or PDF" : "JPG, JPEG, PNG or WEBP";
     const sizeText = file.size >= 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`;
     const reject = (note: string) => {
       setSlotNote((current) => ({ ...current, [kind]: note }));
@@ -263,34 +262,28 @@ function RegistrationPage() {
       );
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 2 * 1024 * 1024) {
       reject(
         en
-          ? `${label} “${file.name}” is too big (${sizeText}). The limit is 5 MB. Choose a smaller file.`
-          : `${label} “${file.name}” बहुत बड़ी है (${sizeText})। सीमा 5 MB है। छोटी फ़ाइल चुनें।`,
+          ? `${label} “${file.name}” is too big (${sizeText}). The limit is 2 MB. Choose a smaller file.`
+          : `${label} “${file.name}” बहुत बड़ी है (${sizeText})। सीमा 2 MB है। छोटी फ़ाइल चुनें।`,
       );
       return;
     }
+    let chosen: Blob = file;
     if (image) {
-      const opened = await readImageSize(file);
-      if (!opened) {
+      const fitted = await shrinkImage(file, kind === "photo" || kind === "sign" ? 380_000 : 520_000);
+      if (!fitted) {
         reject(
           en
-            ? `${label} “${file.name}” was not uploaded. The format is not JPG, JPEG, PNG or WEBP, or the file is damaged. Save it as JPEG and choose it again.`
-            : `${label} “${file.name}” अपलोड नहीं हुई। फ़ॉर्मैट JPG, JPEG, PNG या WEBP नहीं है, या फ़ाइल खराब है। JPEG में सेव करके फिर चुनें।`,
+            ? `${label} “${file.name}” was not uploaded. Save it as a JPG under 2 MB and choose it again.`
+            : `${label} “${file.name}” अपलोड नहीं हुई। इसे 2 MB से छोटी JPG में सेव करके फिर चुनें।`,
         );
         return;
       }
-      if (opened.w > 7000 || opened.h > 7000) {
-        reject(
-          en
-            ? `${label} “${file.name}” was not uploaded. Resolution is too high (${opened.w}×${opened.h}). Make the photo smaller, under 5 MB, and choose it again.`
-            : `${label} “${file.name}” अपलोड नहीं हुई। रेज़ोल्यूशन बहुत बड़ा है (${opened.w}×${opened.h})। फोटो छोटी करके, 5 MB से कम, फिर चुनें।`,
-        );
-        return;
-      }
+      chosen = await (await fetch(fitted)).blob();
     }
-    const next = { name: file.name, url: URL.createObjectURL(file), image };
+    const next = { name: file.name, url: URL.createObjectURL(chosen), image };
     const keep = (current: Upload | null) => {
       if (current && current.url !== next.url) URL.revokeObjectURL(current.url);
       return next;
@@ -322,13 +315,22 @@ function RegistrationPage() {
       return en ? "Write the father’s and mother’s names." : "पिता और माता का नाम लिखें।";
     }
     if (draft.marital !== "Single" && draft.marital !== "Married" && draft.marital !== "Others") return en ? "Choose marital status." : "वैवाहिक स्थिति चुनें।";
+    if (!draft.gender) return en ? "Choose gender." : "लिंग चुनें।";
     if (!draft.dob) return en ? "Choose the date of birth." : "जन्म तिथि चुनें।";
+    if (draft.birthPlace.trim().length < 2) return en ? "Write the place." : "स्थान लिखें।";
+    if (draft.religion.trim().length < 2) return en ? "Write the religion." : "धर्म लिखें।";
+    if (draft.caste.trim().length < 2) return en ? "Write the caste." : "जाति लिखें।";
+    if (!draft.category) return en ? "Choose the category." : "वर्ग चुनें।";
     if (draft.address.trim().length < 6) return en ? "Write the full address." : "पूरा पता लिखें।";
+    if (!/^\d{6}$/.test(draft.pin.trim())) return en ? "Write the 6-digit PIN code." : "6 अंक का पिन कोड लिखें।";
     if (!/^[6-9]\d{9}$/.test(draft.mobile.trim())) return en ? "Write a 10-digit mobile number." : "10 अंक का मोबाइल नंबर लिखें।";
     if (!draft.course) return en ? "Choose a course." : "कोर्स चुनें।";
+    if (!draft.knowledge) return en ? "Choose computer knowledge." : "कंप्यूटर का ज्ञान चुनें।";
+    if (!draft.batch) return en ? "Choose the preferred batch." : "पसंदीदा बैच चुनें।";
     if (!/^\d{12}$/.test(draft.aadhaar)) return en ? "Write the 12-digit Aadhaar number." : "12 अंक का आधार नंबर लिखें।";
     if (!draft.qualification) return en ? "Choose the class." : "कक्षा चुनें।";
     if (draft.school.trim().length < 2) return en ? "Write the school or college name." : "स्कूल या कॉलेज का नाम लिखें।";
+    if (!draft.board) return en ? "Choose the board." : "बोर्ड चुनें।";
     if (!/^(19|20)\d{2}$/.test(draft.passingYear) || Number(draft.passingYear) > new Date().getFullYear()) {
       return en ? "Write the passing year." : "उत्तीर्ण वर्ष लिखें।";
     }
@@ -433,14 +435,14 @@ function RegistrationPage() {
       }
       const form: AdmissionForm = {
         ...draft,
-        photo: photoData,
+        photo: await packLarge(photoData),
         documentName: paper?.name || "",
-        documentData: docData,
+        documentData: await packLarge(docData),
         aadhaarName: aadhaarFile?.name || "",
-        aadhaarData,
-        signUpload: signData,
-        studentSign: studentDrawn,
-        parentSign: parentDrawn,
+        aadhaarData: await packLarge(aadhaarData),
+        signUpload: await packLarge(signData),
+        studentSign: await packLarge(studentDrawn),
+        parentSign: await packLarge(parentDrawn),
         declareTruth: true,
         declareParent: true,
         percentage: percent(draft.marksGot, draft.marksTotal),
@@ -488,8 +490,8 @@ function RegistrationPage() {
       setReady(false);
       showFile(
         en
-          ? "Could not submit. Check the red note under the file that failed. It names the file and the reason: size over 5 MB, resolution, or the wrong format."
-          : "सबमिट नहीं हुआ। जिस फ़ाइल के नीचे लाल नोट है, वही फ़ाइल नहीं चली। उसमें साइज़ 5 MB से बड़ा है, रेज़ोल्यूशन ठीक नहीं है, या फ़ॉर्मैट गलत है।",
+          ? "Could not submit. Check the red note under the file that failed. It names the file and the reason: size over 2 MB, resolution, or the wrong format."
+          : "सबमिट नहीं हुआ। जिस फ़ाइल के नीचे लाल नोट है, वही फ़ाइल नहीं चली। उसमें साइज़ 2 MB से बड़ा है, रेज़ोल्यूशन ठीक नहीं है, या फ़ॉर्मैट गलत है।",
       );
     } finally {
       setSaving(false);
@@ -657,13 +659,14 @@ function RegistrationPage() {
         parent: "Parent’s / guardian’s signature",
         clear: "Clear",
         uploads: "Uploads",
-        uploadHint: "Each file up to 5 MB. The signature boxes above stay for signing by hand. Print shows the files. WhatsApp sends the names — attach the files in the chat.",
+        uploadHint: "Each file up to 2 MB. The signature boxes above stay for signing by hand. Print shows the files. WhatsApp sends the names — attach the files in the chat.",
         photo: "Photo",
         document: "Document",
         aadhaarFile: "Aadhaar upload",
         signFile: "Applicant's Signature",
-        photoHint: "Upload JPG, JPEG, PNG or WEBP. Maximum 5 MB.",
-        docHint: "Upload JPG, JPEG, PNG, WEBP or PDF. Maximum 5 MB.",
+        photoHint: "Upload JPG, JPEG, PNG or WEBP. Maximum 2 MB.",
+        docHint: "Upload JPG, JPEG, PNG, WEBP or PDF. Maximum 2 MB.",
+        aadhaarHint: "Upload JPG, JPEG, PNG, WEBP or PDF. Maximum 2 MB.",
         remove: "Remove",
         submit: "Submit",
         preview: "Preview",
@@ -731,13 +734,14 @@ function RegistrationPage() {
         parent: "माता-पिता / अभिभावक का हस्ताक्षर",
         clear: "साफ़ करें",
         uploads: "अपलोड",
-        uploadHint: "हर फ़ाइल अधिकतम 5 एमबी। ऊपर वाले हस्ताक्षर बॉक्स हाथ से साइन करने के लिए ज्यों के त्यों हैं। प्रिंट पर फ़ाइल दिखेगी। WhatsApp पर नाम जाता है — फ़ाइल चैट में अटैच करें।",
+        uploadHint: "हर फ़ाइल अधिकतम 2 एमबी। ऊपर वाले हस्ताक्षर बॉक्स हाथ से साइन करने के लिए ज्यों के त्यों हैं। प्रिंट पर फ़ाइल दिखेगी। WhatsApp पर नाम जाता है — फ़ाइल चैट में अटैच करें।",
         photo: "फोटो",
         document: "दस्तावेज़",
         aadhaarFile: "आधार अपलोड",
         signFile: "आवेदक का हस्ताक्षर",
-        photoHint: "JPG, JPEG, PNG या WEBP में अपलोड करें। अधिकतम 5 एमबी।",
-        docHint: "JPG, JPEG, PNG, WEBP या PDF में अपलोड करें। अधिकतम 5 एमबी।",
+        photoHint: "JPG, JPEG, PNG या WEBP में अपलोड करें। अधिकतम 2 एमबी।",
+        docHint: "JPG, JPEG, PNG, WEBP या PDF में अपलोड करें। अधिकतम 2 एमबी।",
+        aadhaarHint: "JPG, JPEG, PNG, WEBP या PDF में अपलोड करें। अधिकतम 2 एमबी।",
         remove: "हटाएँ",
         submit: "सबमिट",
         preview: "प्रीव्यू",
@@ -791,7 +795,7 @@ function RegistrationPage() {
             <input className={field} value={draft.student} autoComplete="name" onChange={(event) => set("student", event.target.value)} />
           </Label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Label text={t.gender}>
+            <Label text={t.gender} required>
               <select className={field} value={draft.gender} onChange={(event) => set("gender", event.target.value)}>
                 <option value="">{t.choose}</option>
                 <option value={t.male}>{t.male}</option>
@@ -812,18 +816,18 @@ function RegistrationPage() {
             </Label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Label text={t.place}>
+            <Label text={t.place} required>
               <input className={field} value={draft.birthPlace} onChange={(event) => set("birthPlace", event.target.value)} />
             </Label>
-            <Label text={t.religion}>
+            <Label text={t.religion} required>
               <input className={field} value={draft.religion} onChange={(event) => set("religion", event.target.value)} />
             </Label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Label text={t.caste}>
+            <Label text={t.caste} required>
               <input className={field} value={draft.caste} onChange={(event) => set("caste", event.target.value)} />
             </Label>
-            <Label text={t.category}>
+            <Label text={t.category} required>
               <select className={field} value={draft.category} onChange={(event) => set("category", event.target.value)}>
                 <option value="">{t.choose}</option>
                 <option>General</option>
@@ -883,7 +887,7 @@ function RegistrationPage() {
             <Label text={t.school} required>
               <input className={field} value={draft.school} onChange={(event) => set("school", event.target.value)} />
             </Label>
-            <Label text={t.board}>
+            <Label text={t.board} required>
               <select className={field} value={draft.board} onChange={(event) => set("board", event.target.value)}>
                 <option value="">{t.choose}</option>
                 <option>UP Board</option>
@@ -934,7 +938,7 @@ function RegistrationPage() {
             <textarea className={`${field} min-h-28 py-3`} value={draft.address} onChange={(event) => set("address", event.target.value)} />
           </Label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Label text={t.pin}>
+            <Label text={t.pin} required>
               <input
                 className={field}
                 inputMode="numeric"
@@ -956,7 +960,7 @@ function RegistrationPage() {
             <Label text={t.email}>
               <input className={field} type="email" autoComplete="email" value={draft.email} onChange={(event) => set("email", event.target.value)} />
             </Label>
-            <Label text={t.knowledge}>
+            <Label text={t.knowledge} required>
               <select className={field} value={draft.knowledge} onChange={(event) => set("knowledge", event.target.value)}>
                 <option value="">{t.choose}</option>
                 <option value={t.none}>{t.none}</option>
@@ -965,7 +969,7 @@ function RegistrationPage() {
               </select>
             </Label>
           </div>
-          <Label text={t.batch}>
+          <Label text={t.batch} required>
             <select className={field} value={draft.batch} onChange={(event) => set("batch", event.target.value)}>
               <option value="">{t.choose}</option>
               <option value={t.morning}>{t.morning}</option>
@@ -993,7 +997,7 @@ function RegistrationPage() {
               label={t.photo}
               required
               hint={t.photoHint}
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              accept="image/jpeg,image/jpg,.jpg,.jpeg,.jpe,.jfif,image/png,.png,image/webp,.webp"
               removeLabel={t.remove}
               file={photo}
               onPick={(file) => void takeFile(file, "photo")}
@@ -1010,7 +1014,7 @@ function RegistrationPage() {
               required
               sharp
               hint={t.docHint}
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,.pdf"
+              accept="image/jpeg,image/jpg,.jpg,.jpeg,.jpe,.jfif,image/png,.png,image/webp,.webp,application/pdf,.pdf"
               removeLabel={t.remove}
               file={paper}
               onPick={(file) => void takeFile(file, "doc")}
@@ -1026,8 +1030,8 @@ function RegistrationPage() {
               label={t.aadhaarFile}
               required
               sharp
-              hint={t.docHint}
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,.pdf"
+              hint={t.aadhaarHint}
+              accept="image/jpeg,image/jpg,.jpg,.jpeg,.jpe,.jfif,image/png,.png,image/webp,.webp,application/pdf,.pdf"
               removeLabel={t.remove}
               file={aadhaarFile}
               onPick={(file) => void takeFile(file, "aadhaar")}
@@ -1043,7 +1047,7 @@ function RegistrationPage() {
               label={t.signFile}
               required
               hint={t.photoHint}
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              accept="image/jpeg,image/jpg,.jpg,.jpeg,.jpe,.jfif,image/png,.png,image/webp,.webp"
               removeLabel={t.remove}
               file={signFile}
               onPick={(file) => void takeFile(file, "sign")}
@@ -1270,46 +1274,15 @@ async function readUpload(file: Upload, label: string, maxChars: number, en: boo
       };
     }
     if (file.image) {
-      let bitmap: ImageBitmap;
-      try {
-        bitmap = await createImageBitmap(blob);
-      } catch {
+      const data = await shrinkImage(blob, maxChars);
+      if (!data) {
         return {
           error: en
-            ? `${label} “${name}” could not be opened. The file may be damaged, or its resolution and format are not supported. Save it as JPG or PNG under 5 MB and choose it again.`
-            : `${label} “${name}” नहीं खुली। फ़ाइल खराब हो सकती है, या रेज़ोल्यूशन और फ़ॉर्मैट सही नहीं है। इसे JPG या PNG में 5 MB से छोटी सेव करके फिर चुनें।`,
+            ? `${label} “${name}” could not be prepared. Save it as a JPG and choose it again.`
+            : `${label} “${name}” तैयार नहीं हुई। JPG में सेव करके फिर चुनें।`,
         };
       }
-      const w = bitmap.width;
-      const h = bitmap.height;
-      try {
-        const scale = Math.min(1, 900 / Math.max(w, h));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(w * scale));
-        canvas.height = Math.max(1, Math.round(h * scale));
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("canvas");
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        const data = canvas.toDataURL("image/jpeg", 0.72);
-        bitmap.close?.();
-        if (data.length > maxChars) {
-          return {
-            error: en
-              ? `${label} “${name}” is too big (${w}×${h}). Save a smaller JPG under 1 MB and choose it again.`
-              : `${label} “${name}” बहुत बड़ी है (${w}×${h})। 1 MB से छोटी JPG सेव करके फिर चुनें।`,
-          };
-        }
-        return { data };
-      } catch {
-        bitmap.close?.();
-        return {
-          error: en
-            ? `${label} “${name}” resolution is too high (${w}×${h}). Reduce the photo, save it as JPG under 5 MB, and choose it again.`
-            : `${label} “${name}” का रेज़ोल्यूशन बहुत बड़ा है (${w}×${h})। फोटो छोटी करके JPG में 5 MB से कम सेव करें, फिर चुनें।`,
-        };
-      }
+      return { data };
     }
     const data = await readDataUrl(blob);
     const head = data.slice(0, 48).toLowerCase();
@@ -1324,16 +1297,16 @@ async function readUpload(file: Upload, label: string, maxChars: number, en: boo
       const mb = (blob.size / (1024 * 1024)).toFixed(2);
       return {
         error: en
-          ? `${label} “${name}” is too big (${mb} MB). The limit is 5 MB. Choose a smaller file.`
-          : `${label} “${name}” बहुत बड़ी है (${mb} MB)। सीमा 5 MB है। छोटी फ़ाइल चुनें।`,
+          ? `${label} “${name}” is too big (${mb} MB). The limit is 2 MB. Choose a smaller file.`
+          : `${label} “${name}” बहुत बड़ी है (${mb} MB)। सीमा 2 MB है। छोटी फ़ाइल चुनें।`,
       };
     }
     return { data };
   } catch {
     return {
       error: en
-        ? `${label} “${name}” could not be read. Choose it again as JPG, PNG, WEBP or PDF under 5 MB.`
-        : `${label} “${name}” पढ़ी नहीं गई। JPG, PNG, WEBP या PDF चुनें, 5 MB से छोटी।`,
+        ? `${label} “${name}” could not be read. Choose it again as JPG, PNG, WEBP or PDF under 2 MB.`
+        : `${label} “${name}” पढ़ी नहीं गई। JPG, PNG, WEBP या PDF चुनें, 2 MB से छोटी।`,
     };
   }
 }
@@ -1347,7 +1320,56 @@ function readDataUrl(blob: Blob) {
   });
 }
 
-function readImageSize(file: File) {
+async function shrinkImage(source: Blob, maxChars: number) {
+  const size = await readImageSize(source);
+  if (!size) return null;
+  const sides = [1000, 760, 520];
+  const qualities = [0.7, 0.52, 0.38];
+  for (const side of sides) {
+    const scale = Math.min(1, side / Math.max(size.w, size.h));
+    const w = Math.max(1, Math.round(size.w * scale));
+    const h = Math.max(1, Math.round(size.h * scale));
+    let bitmap: ImageBitmap | null = null;
+    try {
+      try {
+        bitmap = await createImageBitmap(source, { resizeWidth: w, resizeHeight: h, resizeQuality: "medium" });
+      } catch {
+        bitmap = await createImageBitmap(source);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      for (const quality of qualities) {
+        const data = canvas.toDataURL("image/jpeg", quality);
+        if (data.length <= maxChars) return data;
+      }
+    } catch {
+      /* try a smaller copy */
+    } finally {
+      bitmap?.close?.();
+    }
+  }
+  return null;
+}
+
+async function packLarge(value: string) {
+  if (value.length < 800_000) return value;
+  const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  const size = 600_000;
+  let idx = 0;
+  for (let start = 0; start < value.length; start += size) {
+    await saveUploadChunk({ data: { token, idx, part: value.slice(start, start + size) } });
+    idx += 1;
+  }
+  return `chunks:${token}:${idx}`;
+}
+
+function readImageSize(file: Blob) {
   return new Promise<{ w: number; h: number } | null>((resolve) => {
     const finish = (size: { w: number; h: number } | null) => resolve(size && size.w > 1 && size.h > 1 ? size : null);
     createImageBitmap(file)
@@ -1397,8 +1419,8 @@ function fileRejectNote(detail: string, en: boolean) {
   const pdfOk = slot === "document" || slot === "aadhaar";
   if (why === "big") {
     return en
-      ? `${label} is too big to send. Choose a smaller file under 5 MB.`
-      : `${label} भेजने के लिए बहुत बड़ी है। 5 MB से छोटी फ़ाइल चुनें।`;
+      ? `${label} is too big to send. Choose a smaller file under 2 MB.`
+      : `${label} भेजने के लिए बहुत बड़ी है। 2 MB से छोटी फ़ाइल चुनें।`;
   }
   if (why === "type") {
     return en
