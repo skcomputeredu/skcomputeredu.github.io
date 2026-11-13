@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { FilledForm } from "@/components/filled-form";
+import { FilledForm, saveServerPdf } from "@/components/filled-form";
 import {
   adminList,
   adminLogin,
@@ -827,14 +827,19 @@ function AdminPage() {
                     </td>
                     {tab === "live" ? (
                       <td className="border border-line px-3 py-2">
-                        <a
-                          href={`/api/admission-pdf?${new URLSearchParams({ token, id: String(row.id), docs: "1" }).toString()}`}
-                          download={`SK-registration-${row.serial}-with-documents.pdf`}
-                          {...tapProps(`down-${row.id}`, () => setDownId(row.id))}
+                        <button
+                          type="button"
+                          {...tapProps(`down-${row.id}`, () => {
+                            setDownId(row.id);
+                            void saveServerPdf(
+                              `/api/admission-pdf?${new URLSearchParams({ token, id: String(row.id), docs: "1" }).toString()}`,
+                              `SK-registration-${row.serial}-with-documents.pdf`,
+                            );
+                          })}
                           className={`inline-flex min-h-11 items-center rounded-full px-4 font-semibold touch-manipulation ${downId === row.id ? "bg-navy text-ivory" : "border border-navy bg-white text-navy"}`}
                         >
                           {en ? "Download" : "डाउनलोड"}
-                        </a>
+                        </button>
                       </td>
                     ) : null}
                     <td className="border border-line px-3 py-2">
