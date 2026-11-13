@@ -85,6 +85,35 @@ function toSql(run: Run): Sql {
   return sql;
 }
 
+async function applyMigrations(client: {
+  query: (text: string, params?: unknown[]) => Promise<{ rows: { name: string }[] }>;
+}) {
+  await client.query(
+    "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+  );
+  const applied = (await client.query("SELECT name FROM _migrations")).rows.map((row) => row.name);
+  const migrations = import.meta.glob("/migrations/*.sql", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  for (const { name, path } of pendingMigrations(Object.keys(migrations), applied)) {
+    try {
+      await client.query("BEGIN");
+      await client.query(migrations[path]);
+      await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
+      await client.query("COMMIT");
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* the connection may already be closed */
+      }
+      throw err;
+    }
+  }
+}
+
 function createNeonSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
     // Regular Postgres driver: node-postgres (`pg`) — works directly with Neon's
@@ -93,7 +122,18 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const pool = new Pool({ connectionString: databaseUrl });
+    const pool = new Pool({
+      connectionString: databaseUrl?.replace(/([?&])channel_binding=[^&]*&?/g, "$1").replace(/[?&]$/, ""),
+      // Neon presents a certificate chain node-postgres rejects by default,
+      // which makes every live query fail while the preview (no DATABASE_URL) works.
+      ssl: { rejectUnauthorized: false },
+    });
+    const client = await pool.connect();
+    try {
+      await applyMigrations(client);
+    } finally {
+      client.release();
+    }
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];

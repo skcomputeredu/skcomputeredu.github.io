@@ -79,6 +79,16 @@ const feeInput = z.object({
   payerUpi: z.string().trim().max(80),
 });
 
+export const saveUploadChunk = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z.object({ token: z.string().min(8).max(48), idx: z.number().int().min(0).max(40), part: z.string().max(700_000) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { keepUploadChunk } = await import("./admissions.server");
+    await keepUploadChunk(data.token, data.idx, data.part);
+    return { ok: true as const };
+  });
+
 export const submitAdmission = createServerFn({ method: "POST" })
   .validator((input: unknown) => admissionSchema.parse(input))
   .handler(async ({ data }) => {

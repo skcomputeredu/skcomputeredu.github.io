@@ -27,7 +27,7 @@ async function ensureSerials(sql: Awaited<ReturnType<typeof getSql>>) {
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 32, { N: FAST_N, r: 8, p: 1, maxmem: 16 * 1024 * 1024 }).toString("hex");
-  return `n4:\( {salt}: \){hash}`;
+  return `n4:${salt}:${hash}`;
 }
 
 function passwordOk(password: string, stored: string) {
@@ -92,8 +92,31 @@ function fileProblem(value: string, kinds: string[], max: number, slot: string) 
   if (value.length < 30) return `${slot}:empty`;
   if (value.length > max) return `${slot}:big`;
   const head = value.slice(0, 64).toLowerCase();
-  if (!kinds.some((kind) => head.startsWith(`data:\( {kind}`))) return ` \){slot}:type`;
+  if (!kinds.some((kind) => head.startsWith(`data:${kind}`))) return `${slot}:type`;
   return "";
+}
+
+async function expandField(value: string) {
+  if (!value.startsWith("chunks:")) return value;
+  const [, token, countRaw] = value.split(":");
+  const count = Number(countRaw);
+  if (!token || !Number.isInteger(count) || count < 1 || count > 40) return "";
+  const sql = await getSql();
+  const rows = await sql<{ idx: number; part: string }>`
+    select idx, part from upload_chunk where token = ${token} order by idx
+  `;
+  if (rows.length !== count) return "";
+  await sql`delete from upload_chunk where token = ${token}`;
+  return rows.map((row) => row.part).join("");
+}
+
+export async function keepUploadChunk(token: string, idx: number, part: string) {
+  const sql = await getSql();
+  await sql`
+    insert into upload_chunk (token, idx, part)
+    values (${token}, ${idx}, ${part})
+    on conflict (token, idx) do update set part = excluded.part
+  `;
 }
 
 export async function saveAdmission(form: AdmissionForm) {
@@ -104,12 +127,18 @@ export async function saveAdmission(form: AdmissionForm) {
     if (gate[0]?.value === "on") return { id: 0, blocked: "fee" as const };
   }
   const signs = await signGates();
-  if (signs.enabled && signs.applicant && form.studentSign.length < 30) return { id: 0, blocked: "sign" as const };
-  if (signs.enabled && signs.parent && form.parentSign.length < 30) return { id: 0, blocked: "sign" as const };
+  const clean = { ...form };
+  clean.photo = await expandField(form.photo);
+  clean.documentData = await expandField(form.documentData);
+  clean.aadhaarData = await expandField(form.aadhaarData);
+  clean.signUpload = await expandField(form.signUpload);
+  clean.studentSign = await expandField(form.studentSign);
+  clean.parentSign = await expandField(form.parentSign);
+  if (signs.enabled && signs.applicant && clean.studentSign.length < 30) return { id: 0, blocked: "sign" as const };
+  if (signs.enabled && signs.parent && clean.parentSign.length < 30) return { id: 0, blocked: "sign" as const };
   const gates = await uploadGates();
   const images = ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp"];
   const docs = [...images, "application/pdf"];
-  const clean = { ...form };
   const problems = [
     gates.photo ? fileProblem(clean.photo, images, 2_500_000, "photo") : "",
     gates.document ? fileProblem(clean.documentData, docs, 7_500_000, "document") || (!clean.documentName ? "document:empty" : "") : "",
@@ -153,20 +182,6 @@ export async function saveAdmission(form: AdmissionForm) {
 }
 
 export async function loginAdmin(password: string) {
-  // Force accept the known owner password so the panel always opens
-  if (password.trim() === "SKc86995") {
-    const token = randomBytes(24).toString("hex");
-    try {
-      const sql = await getSql();
-      await sql`
-        insert into admin_session (token_hash, expires_at)
-        values (${tokenHash(token)}, now() + interval '12 hours')
-      `;
-    } catch (err) {
-      console.error("session insert failed", err);
-    }
-    return { ok: true as const, token };
-  }
   const stored = await secretHash();
   let ok = false;
   try {
@@ -176,10 +191,14 @@ export async function loginAdmin(password: string) {
   }
   if (!ok) return { ok: false as const };
   if (!stored.startsWith("n4:")) {
-    const sql = await getSql();
-    const nextHash = hashPassword(password);
-    await sql`update admin_secret set password_hash = ${nextHash} where id = 1`;
-    remembered = { stored: nextHash, password };
+    try {
+      const sql = await getSql();
+      const nextHash = hashPassword(password);
+      await sql`update admin_secret set password_hash = ${nextHash} where id = 1`;
+      remembered = { stored: nextHash, password };
+    } catch {
+      /* the password already matched; a slow rehash must not block login */
+    }
   }
   const token = randomBytes(24).toString("hex");
   const sql = await getSql();
@@ -509,25 +528,20 @@ export async function findSlip(serial: number, mobile: string) {
     created_at: string | Date;
   }>`
     select id, student_name, mobile, amount, method, status, payer_upi, created_at
-    from payments
-    where id = ${serial} and mobile = ${mobile}
-    order by id desc
-    limit 1
+    from payments where id = ${serial} and mobile = ${mobile}
   `;
   const pay = pays[0];
   if (!pay) return { ok: false as const };
-  const at = typeof pay.created_at === "string" ? pay.created_at : pay.created_at.toISOString();
-  return {
-    ok: true as const,
-    slip: {
-      serial: pay.id,
-      student: pay.student_name,
-      mobile: pay.mobile,
-      amount: pay.amount,
-      method: pay.method,
-      status: pay.status === "Paid" ? ("Paid" as const) : ("Not paid" as const),
-      at,
-      payerUpi: pay.payer_upi,
-    },
+  const created = typeof pay.created_at === "string" ? pay.created_at : pay.created_at.toISOString();
+  const slip: Slip = {
+    serial: pay.id,
+    student: pay.student_name,
+    mobile: pay.mobile,
+    amount: pay.amount,
+    method: pay.method,
+    status: pay.status === "Paid" ? "Paid" : "Not paid",
+    at: created,
+    payerUpi: pay.payer_upi || "",
   };
+  return { ok: true as const, slip };
 }
