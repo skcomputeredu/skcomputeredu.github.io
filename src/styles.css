@@ -696,6 +696,10 @@ summary {
   font-size: clamp(13pt, 4.8vw, 22pt);
 }
 
+.slip-sheet .paper-title {
+  transform: translateX(-6mm);
+}
+
 .slip-sheet .paper-address {
   font-size: clamp(9.5pt, 3.2vw, 13pt);
 }
@@ -717,14 +721,4 @@ summary {
   .slip-sheet .paper-row b {
     font-size: 10pt;
   }
-}
-
-/* Force password fields to stay readable and not show colored autofill */
-input[type="password"]:-webkit-autofill,
-input[type="password"]:-webkit-autofill:hover,
-input[type="password"]:-webkit-autofill:focus {
-  -webkit-text-fill-color: #0c2340 !important;
-  -webkit-box-shadow: 0 0 0px 1000px #f4f0e6 inset !important;
-  transition: background-color 5000s ease-in-out 0s;
-  color: #0c2340 !important;
 }
