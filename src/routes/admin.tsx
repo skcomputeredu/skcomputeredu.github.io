@@ -32,6 +32,47 @@ export const Route = createFileRoute("/admin")({
 });
 
 const TOKEN = "sk-admin-token";
+const GATES = "sk-admin-gates";
+
+type GateSnap = {
+  fee: boolean;
+  sign: boolean;
+  applicant: boolean;
+  parent: boolean;
+  manager: boolean;
+  pad: boolean;
+  photo: boolean;
+  document: boolean;
+  aadhaar: boolean;
+  signature: boolean;
+};
+
+function readRemembered(): GateSnap | null {
+  try {
+    const raw = window.localStorage.getItem(GATES);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as Partial<GateSnap>;
+    if (typeof data.fee !== "boolean" || typeof data.sign !== "boolean") return null;
+    return {
+      fee: data.fee,
+      sign: data.sign,
+      applicant: data.applicant !== false,
+      parent: data.parent !== false,
+      manager: Boolean(data.manager),
+      pad: Boolean(data.pad),
+      photo: data.photo !== false,
+      document: data.document !== false,
+      aadhaar: data.aadhaar !== false,
+      signature: data.signature !== false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function rememberGates(snap: GateSnap) {
+  window.localStorage.setItem(GATES, JSON.stringify(snap));
+}
 
 function AdminPage() {
   const { lang } = useI18n();
@@ -58,6 +99,18 @@ function AdminPage() {
   const [viewId, setViewId] = useState(0);
   const [downId, setDownId] = useState(0);
   const gateWrites = useRef({ fee: 0, sign: 0, applicant: 0, parent: 0, manager: 0, upload: 0 });
+  const gatesRef = useRef<GateSnap>({
+    fee: false,
+    sign: true,
+    applicant: true,
+    parent: true,
+    manager: false,
+    pad: false,
+    photo: true,
+    document: true,
+    aadhaar: true,
+    signature: true,
+  });
   const rowBusy = useRef(false);
   const hitAt = useRef<Record<string, number>>({});
   const tapStart = useRef<Record<string, { x: number; y: number }>>({});
@@ -96,6 +149,66 @@ function AdminPage() {
     setTrash(bin);
   }
 
+  function applySnap(snap: GateSnap) {
+    gatesRef.current = snap;
+    setFeeOn(snap.fee);
+    setSignOn(snap.sign);
+    setApplicantOn(snap.applicant);
+    setParentOn(snap.parent);
+    setManagerOn(snap.manager);
+    setPadOn(snap.pad);
+    setUploads({ photo: snap.photo, document: snap.document, aadhaar: snap.aadhaar, signature: snap.signature });
+  }
+
+  function keep(partial: Partial<GateSnap>) {
+    const next = { ...gatesRef.current, ...partial };
+    gatesRef.current = next;
+    rememberGates(next);
+  }
+
+  async function restoreGates(tok: string) {
+    const [gate, signs, files, manager] = await Promise.all([
+      readFeeGate({ data: {} }),
+      readSignGate({ data: {} }),
+      readUploadGates({ data: {} }),
+      readManagerSign({ data: { token: tok } }),
+    ]);
+    const server: GateSnap = {
+      fee: gate.required,
+      sign: signs.enabled,
+      applicant: signs.applicant,
+      parent: signs.parent,
+      manager: manager.enabled,
+      pad: Boolean(manager.padEnabled),
+      photo: files.photo,
+      document: files.document,
+      aadhaar: files.aadhaar,
+      signature: files.signature,
+    };
+    const remembered = readRemembered();
+    const next = remembered ?? server;
+    applySnap(next);
+    setManagerImage(manager.image || "");
+    setPadImage(manager.padImage || "");
+    if (!remembered) {
+      rememberGates(server);
+      return;
+    }
+    const jobs: Promise<unknown>[] = [];
+    if (next.fee !== server.fee) jobs.push(setFeeGate({ data: { token: tok, enabled: next.fee } }));
+    if (next.sign !== server.sign) jobs.push(setSignGate({ data: { token: tok, enabled: next.sign } }));
+    if (next.applicant !== server.applicant) jobs.push(setSignPart({ data: { token: tok, part: "applicant", enabled: next.applicant } }));
+    if (next.parent !== server.parent) jobs.push(setSignPart({ data: { token: tok, part: "parent", enabled: next.parent } }));
+    if (next.manager !== server.manager || next.pad !== server.pad) {
+      jobs.push(setManagerSign({ data: { token: tok, enabled: next.manager, padEnabled: next.pad } }));
+    }
+    if (next.photo !== server.photo) jobs.push(setUploadGate({ data: { token: tok, key: "upload_photo", enabled: next.photo } }));
+    if (next.document !== server.document) jobs.push(setUploadGate({ data: { token: tok, key: "upload_document", enabled: next.document } }));
+    if (next.aadhaar !== server.aadhaar) jobs.push(setUploadGate({ data: { token: tok, key: "upload_aadhaar", enabled: next.aadhaar } }));
+    if (next.signature !== server.signature) jobs.push(setUploadGate({ data: { token: tok, key: "upload_signature", enabled: next.signature } }));
+    if (jobs.length) await Promise.all(jobs);
+  }
+
   useEffect(() => {
     void readFeeGate({ data: {} }).catch(() => undefined);
     const saved = window.sessionStorage.getItem(TOKEN);
@@ -109,32 +222,11 @@ function AdminPage() {
         });
       }, 400);
     });
-    readFeeGate({ data: {} })
-      .then((gate) => {
-        if (gateWrites.current.fee === 0) setFeeOn(gate.required);
-      })
-      .catch(() => setFeeOn(false));
-    readSignGate({ data: {} })
-      .then((gate) => {
-        if (gateWrites.current.sign === 0) {
-          setSignOn(gate.enabled);
-          setApplicantOn(gate.applicant);
-          setParentOn(gate.parent);
-        }
-      })
-      .catch(() => setSignOn(true));
-    readManagerSign({ data: saved ? { token: saved } : {} })
-      .then((gate) => {
-        if (gateWrites.current.manager !== 0) return;
-        setManagerOn(gate.enabled);
-        setManagerImage(gate.image || "");
-        setPadOn(Boolean(gate.padEnabled));
-        setPadImage(gate.padImage || "");
-      })
-      .catch(() => undefined);
-    readUploadGates({ data: {} })
-      .then((gate) => setUploads(gate))
-      .catch(() => setUploads({ photo: true, document: true, aadhaar: true, signature: true }));
+    const kept = readRemembered();
+    if (kept) applySnap(kept);
+    restoreGates(saved).catch(() => {
+      if (kept) applySnap(kept);
+    });
   }, []);
 
   async function enter(event: React.FormEvent<HTMLFormElement>) {
@@ -142,7 +234,12 @@ function AdminPage() {
     setError("");
     const field = event.currentTarget.elements.namedItem("password");
     const typed = (field instanceof HTMLInputElement ? field.value : password).trim();
+    const clearPassword = () => {
+      setPassword("");
+      if (field instanceof HTMLInputElement) field.value = "";
+    };
     if (typed.length < 4) {
+      clearPassword();
       setError(en ? "Wrong password." : "पासवर्ड गलत है।");
       return;
     }
@@ -150,6 +247,7 @@ function AdminPage() {
       let result = await adminLogin({ data: { password: typed } }).catch(() => null);
       if (!result) result = await adminLogin({ data: { password: typed } });
       if (!result.ok) {
+        clearPassword();
         setError(en ? "Wrong password." : "पासवर्ड गलत है।");
         return;
       }
@@ -159,21 +257,7 @@ function AdminPage() {
       void import("@/lib/admission-pdf").then((mod) => mod.warmAdmissionPdf());
       try {
         await load(result.token);
-        const [gate, signs, files, manager] = await Promise.all([
-          readFeeGate({ data: {} }),
-          readSignGate({ data: {} }),
-          readUploadGates({ data: {} }),
-          readManagerSign({ data: { token: result.token } }),
-        ]);
-        setFeeOn(gate.required);
-        setSignOn(signs.enabled);
-        setApplicantOn(signs.applicant);
-        setParentOn(signs.parent);
-        setUploads(files);
-        setManagerOn(manager.enabled);
-        setManagerImage(manager.image || "");
-        setPadOn(Boolean(manager.padEnabled));
-        setPadImage(manager.padImage || "");
+        await restoreGates(result.token);
       } catch {
         setError(
           en
@@ -182,6 +266,7 @@ function AdminPage() {
         );
       }
     } catch {
+      clearPassword();
       setError(en ? "Could not open. Try the password again." : "नहीं खुला। पासवर्ड फिर से डालें।");
     }
   }
@@ -205,7 +290,10 @@ function AdminPage() {
     setError("");
     try {
       const result = await setFeeGate({ data: { token, enabled } });
-      if (gateWrites.current.fee === rev) setFeeOn(result.required);
+      if (gateWrites.current.fee === rev) {
+        setFeeOn(result.required);
+        keep({ fee: result.required });
+      }
     } catch {
       if (gateWrites.current.fee !== rev) return;
       setFeeOn(!enabled);
@@ -220,7 +308,10 @@ function AdminPage() {
     setError("");
     try {
       const result = await setSignGate({ data: { token, enabled } });
-      if (gateWrites.current.sign === rev) setSignOn(result.enabled);
+      if (gateWrites.current.sign === rev) {
+        setSignOn(result.enabled);
+        keep({ sign: result.enabled });
+      }
     } catch {
       if (gateWrites.current.sign !== rev) return;
       setSignOn(!enabled);
@@ -239,6 +330,7 @@ function AdminPage() {
       if (gateWrites.current[part] !== rev) return;
       setApplicantOn(result.applicant);
       setParentOn(result.parent);
+      keep({ applicant: result.applicant, parent: result.parent });
     } catch {
       if (gateWrites.current[part] !== rev) return;
       if (part === "applicant") setApplicantOn(!enabled);
@@ -254,7 +346,10 @@ function AdminPage() {
     setError("");
     try {
       const result = await setUploadGate({ data: { token, key, enabled } });
-      if (gateWrites.current.upload === rev) setUploads(result);
+      if (gateWrites.current.upload === rev) {
+        setUploads(result);
+        keep({ photo: result.photo, document: result.document, aadhaar: result.aadhaar, signature: result.signature });
+      }
     } catch {
       if (gateWrites.current.upload !== rev) return;
       setUploads((now) => ({ ...now, [field]: !enabled }));
@@ -271,6 +366,7 @@ function AdminPage() {
       const result = await setManagerSign({ data: { token, enabled } });
       if (gateWrites.current.manager !== rev) return;
       setManagerOn(result.enabled);
+      keep({ manager: result.enabled });
       if (result.image) setManagerImage(result.image);
     } catch {
       if (gateWrites.current.manager !== rev) return;
@@ -289,6 +385,7 @@ function AdminPage() {
       });
       setPadOn(Boolean(result.padEnabled));
       setManagerOn(result.enabled);
+      keep({ pad: Boolean(result.padEnabled), manager: result.enabled });
       if (result.padImage) setPadImage(result.padImage);
     } catch {
       setPadOn(!enabled);
@@ -312,7 +409,7 @@ function AdminPage() {
     if (!token || !file) return;
     setError("");
     try {
-      const bitmap = await createImageBitmap(file);
+      const bitmap = await createImageBitmap(file, { resizeWidth: 800, resizeQuality: "medium" }).catch(() => createImageBitmap(file));
       const scale = Math.min(1, 800 / Math.max(bitmap.width, bitmap.height));
       const canvas = document.createElement("canvas");
       canvas.width = Math.max(1, Math.round(bitmap.width * scale));
@@ -323,7 +420,7 @@ function AdminPage() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       bitmap.close?.();
-      const image = canvas.toDataURL("image/jpeg", 0.8);
+      const image = canvas.toDataURL("image/jpeg", 0.7);
       if (image.length > 1_800_000) {
         setError(en ? "That signature image is too big. Use a smaller JPG." : "यह हस्ताक्षर बहुत बड़ा है। छोटी JPG चुनें।");
         return;
@@ -385,6 +482,14 @@ function AdminPage() {
     }, false);
   }
 
+  function logout() {
+    window.sessionStorage.removeItem(TOKEN);
+    setToken("");
+    setOpen(null);
+    setPassword("");
+    setError("");
+  }
+
   async function savePassword(event: React.FormEvent) {
     event.preventDefault();
     if (!token || nextPassword.trim().length < 6) return;
@@ -410,8 +515,7 @@ function AdminPage() {
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="min-h-12 rounded-2xl border border-line bg-ivory px-4 text-navy"
-            
+            className="min-h-12 rounded-2xl border border-line bg-ivory px-4"
             aria-label={en ? "Password" : "पासवर्ड"}
           />
           <button type="submit" className="min-h-11 rounded-full bg-navy px-5 font-semibold text-ivory touch-manipulation">
@@ -428,8 +532,19 @@ function AdminPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-12">
       <div className="no-print">
-        <p className="text-xs font-semibold tracking-widest text-gold-deep uppercase">Admin Use Only</p>
-        <h1 className="mt-2 font-display text-4xl text-navy">{en ? "Submitted Forms" : "आए हुए फ़ॉर्म"}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold tracking-widest text-gold-deep uppercase">Admin Use Only</p>
+            <h1 className="mt-2 font-display text-4xl text-navy">{en ? "Submitted Forms" : "आए हुए फ़ॉर्म"}</h1>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-1 min-h-9 shrink-0 rounded-full border border-line px-3 text-sm font-semibold text-navy touch-manipulation"
+          >
+            {en ? "Logout" : "लॉगआउट"}
+          </button>
+        </div>
         <button
           type="button"
           aria-expanded={controlsOpen}
@@ -744,8 +859,7 @@ function AdminPage() {
             value={nextPassword}
             onChange={(event) => setNextPassword(event.target.value)}
             placeholder={en ? "New Password" : "नया पासवर्ड"}
-            className="min-h-12 flex-1 rounded-2xl border border-line bg-ivory px-4 text-navy"
-            
+            className="min-h-12 flex-1 rounded-2xl border border-line bg-ivory px-4"
           />
           <button type="submit" className="min-h-11 rounded-full border border-line px-5 font-semibold text-navy">
             {en ? "Change Password" : "पासवर्ड बदलें"}
