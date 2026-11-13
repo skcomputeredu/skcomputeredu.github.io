@@ -3,12 +3,32 @@ import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 
-// An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
-// "unset" — otherwise production would silently run on the PGLite fallback.
-const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
-const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+// An empty/whitespace URL must mean "unset" — otherwise production would
+// silently run on the PGLite fallback. Neon’s Vercel link often fills
+// POSTGRES_URL and leaves DATABASE_URL empty.
+const NEON_URL_KEYS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
+
+function readNeonUrl() {
+  if (typeof process === "undefined") return undefined;
+  for (const key of NEON_URL_KEYS) {
+    const value = process.env[key];
+    if (value && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+/** Drop channel_binding. node-postgres rejects Neon’s require setting. */
+export function cleanNeonUrl(url: string) {
+  return url.replace(/([?&])channel_binding=[^&]*&?/g, "$1").replace(/[?&]$/, "");
+}
+
+const databaseUrl = readNeonUrl();
 
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
@@ -123,7 +143,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({
-      connectionString: databaseUrl?.replace(/([?&])channel_binding=[^&]*&?/g, "$1").replace(/[?&]$/, ""),
+      connectionString: databaseUrl ? cleanNeonUrl(databaseUrl) : undefined,
       // Neon presents a certificate chain node-postgres rejects by default,
       // which makes every live query fail while the preview (no DATABASE_URL) works.
       ssl: { rejectUnauthorized: false },
