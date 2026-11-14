@@ -110,15 +110,28 @@ async function readPublic(rel: string) {
   return null;
 }
 
+function siteOrigin() {
+  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || process.env.VERCEL_BRANCH_URL || "";
+  if (!host) return "";
+  return host.startsWith("http") ? host.replace(/\/$/, "") : `https://${host}`;
+}
+
 function loadAsset(path: string) {
   const cached = assetCache.get(path);
   if (cached) return cached;
   const pending = (async () => {
+    const rel = path.replace(/^\/+/, "");
+    const absolute = path.startsWith("/") ? path : `/${path}`;
     if (import.meta.env.SSR) {
-      const found = await readPublic(path.replace(/^\/+/, ""));
+      const found = await readPublic(rel);
       if (found) return found.bytes;
+      const origin = siteOrigin();
+      if (origin) {
+        const file = await fetch(`${origin}${absolute}`);
+        if (file.ok) return file.arrayBuffer();
+      }
     }
-    const file = await fetch(path);
+    const file = await fetch(absolute);
     if (!file.ok) throw new Error(path);
     return file.arrayBuffer();
   })();
