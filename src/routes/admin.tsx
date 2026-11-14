@@ -830,12 +830,26 @@ function AdminPage() {
                         <button
                           type="button"
                           {...tapProps(`down-${row.id}`, () => {
-                            setDownId(row.id);
-                            void saveServerPdf(
-                              `/api/admission-pdf?${new URLSearchParams({ token, id: String(row.id), docs: "1" }).toString()}`,
-                              `SK-registration-${row.serial}-with-documents.pdf`,
-                            );
-                          })}
+  setDownId(row.id);
+  void (async () => {
+    const detail = open?.id === row.id ? open : await adminOne({ data: { token, id: row.id } });
+    if (!detail) return;
+    const { downloadAdmissionPdf } = await import("@/lib/admission-pdf");
+    await downloadAdmissionPdf(
+      {
+        ...detail.form,
+        studentSign: signOn && applicantOn ? detail.form.studentSign : "",
+        parentSign: signOn && parentOn ? detail.form.parentSign : "",
+      },
+      detail.serial,
+      true,
+      managerOn ? managerImage : "",
+      padOn ? padImage : "",
+    );
+  })();
+})}
+  );
+})();
                           className={`inline-flex min-h-11 items-center rounded-full px-4 font-semibold touch-manipulation ${downId === row.id ? "bg-navy text-ivory" : "border border-navy bg-white text-navy"}`}
                         >
                           {en ? "Download" : "डाउनलोड"}
