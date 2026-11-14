@@ -917,12 +917,24 @@ function pdfBlob(bytes: Uint8Array) {
   return new Blob([copy], { type: "application/pdf" });
 }
 
-export async function downloadAdmissionPdf(form: AdmissionForm, serial: number, includeDocuments: boolean) {
-  const bytes = await buildAdmissionPdf(form, serial, includeDocuments);
+export async function downloadAdmissionPdf(
+  form: AdmissionForm,
+  serial: number,
+  includeDocuments: boolean,
+  managerSign = "",
+  managerPad = "",
+  mode: "sheet" | "detail" = "sheet",
+) {
+  const bytes = await buildAdmissionPdf(form, serial, includeDocuments, managerSign, mode, managerPad);
   const url = URL.createObjectURL(pdfBlob(bytes));
   const link = document.createElement("a");
   link.href = url;
-  link.download = includeDocuments ? `SK-registration-${serial}-with-documents.pdf` : `SK-registration-${serial}.pdf`;
+  link.download =
+    mode === "detail"
+      ? `SK-form-${serial}.pdf`
+      : includeDocuments
+        ? `SK-registration-${serial}-with-documents.pdf`
+        : `SK-registration-${serial}.pdf`;
   document.body.appendChild(link);
   link.click();
   link.remove();
