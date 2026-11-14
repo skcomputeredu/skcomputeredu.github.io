@@ -260,12 +260,7 @@ export function FilledForm({
       {downloads && downloadToken && fileId ? (
         <button
           type="button"
-          onClick={() => {
-            void saveServerPdf(
-              `/api/admission-pdf?${new URLSearchParams({ token: downloadToken, id: String(fileId), layout: "detail" }).toString()}`,
-              `SK-form-${serial || fileId}.pdf`,
-            );
-          }}
+          onClick={() => saveFormPdf(form, serial || fileId, managerSign, managerPad, false)}
           style={{ textTransform: "none" }}
           className="no-print mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-navy px-5 text-base font-semibold text-ivory touch-manipulation"
         >
