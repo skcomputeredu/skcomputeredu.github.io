@@ -4,19 +4,13 @@ import { PHONE_DISPLAY } from "@/lib/site";
 import type { Lang } from "@/lib/i18n";
 import { Phone } from "lucide-react";
 
-export async function saveServerPdf(url: string, name: string) {
-  const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
-  if (!response.ok) return;
-  const blob = await response.blob();
-  const fileUrl = URL.createObjectURL(blob);
+export function saveServerPdf(url: string, name: string) {
   const link = document.createElement("a");
-  link.href = fileUrl;
+  link.href = url;
   link.download = name;
-  link.rel = "noopener";
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(fileUrl), 4000);
 }
 
 const qualHi: Record<string, string> = {
