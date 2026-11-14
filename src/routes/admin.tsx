@@ -847,9 +847,7 @@ function AdminPage() {
       padOn ? padImage : "",
     );
   })();
-})}
-  );
-})();
+})} 
                           className={`inline-flex min-h-11 items-center rounded-full px-4 font-semibold touch-manipulation ${downId === row.id ? "bg-navy text-ivory" : "border border-navy bg-white text-navy"}`}
                         >
                           {en ? "Download" : "डाउनलोड"}
