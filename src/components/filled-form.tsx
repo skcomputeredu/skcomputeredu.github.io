@@ -4,13 +4,10 @@ import { PHONE_DISPLAY } from "@/lib/site";
 import type { Lang } from "@/lib/i18n";
 import { Phone } from "lucide-react";
 
-export function saveServerPdf(url: string, name: string) {
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+function saveFormPdf(form: Partial<AdmissionForm>, serial: number, managerSign: string, managerPad: string, withDocuments: boolean) {
+  void import("@/lib/admission-pdf").then((mod) =>
+    mod.downloadAdmissionPdf(form as AdmissionForm, serial, withDocuments, managerSign, managerPad, withDocuments ? "sheet" : "detail"),
+  );
 }
 
 const qualHi: Record<string, string> = {
@@ -172,11 +169,7 @@ export function FilledForm({
           <button
             type="button"
             onClick={() => {
-              void saveServerPdf(
-                `/api/admission-pdf?${new URLSearchParams({ token: downloadToken, id: String(fileId), docs: "1" }).toString()}`,
-                `SK-registration-${serial}-with-documents.pdf`,
-              );
-            }}
+              onClick={() => saveFormPdf(form, serial, managerSign, managerPad, true)}
             className="no-print inline-flex min-h-11 items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy touch-manipulation"
           >
             {en ? "Download form" : "फ़ॉर्म डाउनलोड"}
