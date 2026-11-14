@@ -167,13 +167,12 @@ export function FilledForm({
         </p>
         {downloads && serial && downloadToken ? (
           <button
-            type="button"
-            onClick={() => {
-              onClick={() => saveFormPdf(form, serial, managerSign, managerPad, true)}
-            className="no-print inline-flex min-h-11 items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy touch-manipulation"
-          >
-            {en ? "Download form" : "फ़ॉर्म डाउनलोड"}
-          </button>
+  type="button"
+  onClick={() => saveFormPdf(form, serial, managerSign, managerPad, true)}
+  className="no-print inline-flex min-h-11 items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy touch-manipulation"
+>
+  {en ? "Download form" : "फ़ॉर्म डाउनलोड"}
+</button> 
         ) : null}
       </div>
       <dl className="a4-fields-stack mt-4">
