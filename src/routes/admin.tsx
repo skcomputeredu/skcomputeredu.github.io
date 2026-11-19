@@ -15,10 +15,12 @@ import {
   readManagerSign,
   setManagerSign,
   readUploadGates,
+  readPayGates,
   setFeeGate,
   setSignGate,
   setSignPart,
   setUploadGate,
+  setPayGate,
   type AdmissionForm,
   type AdmissionRow,
 } from "@/lib/admissions";
@@ -45,6 +47,10 @@ type GateSnap = {
   document: boolean;
   aadhaar: boolean;
   signature: boolean;
+  upiApps: boolean;
+  cards: boolean;
+  qr: boolean;
+  upiId: boolean;
 };
 
 function readRemembered(): GateSnap | null {
@@ -64,6 +70,10 @@ function readRemembered(): GateSnap | null {
       document: data.document !== false,
       aadhaar: data.aadhaar !== false,
       signature: data.signature !== false,
+      upiApps: data.upiApps !== false,
+      cards: data.cards !== false,
+      qr: data.qr !== false,
+      upiId: data.upiId !== false,
     };
   } catch {
     return null;
@@ -94,11 +104,15 @@ function AdminPage() {
   const [padOn, setPadOn] = useState(false);
   const [padImage, setPadImage] = useState("");
   const [uploads, setUploads] = useState({ photo: true, document: true, aadhaar: true, signature: true });
+  const [upiAppsOn, setUpiAppsOn] = useState(true);
+  const [cardsOn, setCardsOn] = useState(true);
+  const [qrOn, setQrOn] = useState(true);
+  const [upiIdOn, setUpiIdOn] = useState(true);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [busyId, setBusyId] = useState(0);
   const [viewId, setViewId] = useState(0);
   const [downId, setDownId] = useState(0);
-  const gateWrites = useRef({ fee: 0, sign: 0, applicant: 0, parent: 0, manager: 0, upload: 0 });
+  const gateWrites = useRef({ fee: 0, sign: 0, applicant: 0, parent: 0, manager: 0, upload: 0, upiApps: 0, cards: 0, qr: 0, upiId: 0 });
   const gatesRef = useRef<GateSnap>({
     fee: false,
     sign: true,
@@ -110,6 +124,10 @@ function AdminPage() {
     document: true,
     aadhaar: true,
     signature: true,
+    upiApps: true,
+    cards: true,
+    qr: true,
+    upiId: true,
   });
   const rowBusy = useRef(false);
   const hitAt = useRef<Record<string, number>>({});
@@ -158,6 +176,10 @@ function AdminPage() {
     setManagerOn(snap.manager);
     setPadOn(snap.pad);
     setUploads({ photo: snap.photo, document: snap.document, aadhaar: snap.aadhaar, signature: snap.signature });
+    setUpiAppsOn(snap.upiApps);
+    setCardsOn(snap.cards);
+    setQrOn(snap.qr);
+    setUpiIdOn(snap.upiId);
   }
 
   function keep(partial: Partial<GateSnap>) {
@@ -167,10 +189,11 @@ function AdminPage() {
   }
 
   async function restoreGates(tok: string) {
-    const [gate, signs, files, manager] = await Promise.all([
+    const [gate, signs, files, pay, manager] = await Promise.all([
       readFeeGate({ data: {} }),
       readSignGate({ data: {} }),
       readUploadGates({ data: {} }),
+      readPayGates({ data: {} }),
       readManagerSign({ data: { token: tok } }),
     ]);
     const server: GateSnap = {
@@ -184,6 +207,10 @@ function AdminPage() {
       document: files.document,
       aadhaar: files.aadhaar,
       signature: files.signature,
+      upiApps: pay.upiApps,
+      cards: pay.cards,
+      qr: pay.qr,
+      upiId: pay.upiId,
     };
     const remembered = readRemembered();
     const next = remembered ?? server;
@@ -206,6 +233,10 @@ function AdminPage() {
     if (next.document !== server.document) jobs.push(setUploadGate({ data: { token: tok, key: "upload_document", enabled: next.document } }));
     if (next.aadhaar !== server.aadhaar) jobs.push(setUploadGate({ data: { token: tok, key: "upload_aadhaar", enabled: next.aadhaar } }));
     if (next.signature !== server.signature) jobs.push(setUploadGate({ data: { token: tok, key: "upload_signature", enabled: next.signature } }));
+    if (next.upiApps !== server.upiApps) jobs.push(setPayGate({ data: { token: tok, key: "pay_upi_apps", enabled: next.upiApps } }));
+    if (next.cards !== server.cards) jobs.push(setPayGate({ data: { token: tok, key: "pay_cards", enabled: next.cards } }));
+    if (next.qr !== server.qr) jobs.push(setPayGate({ data: { token: tok, key: "pay_qr", enabled: next.qr } }));
+    if (next.upiId !== server.upiId) jobs.push(setPayGate({ data: { token: tok, key: "pay_upi_id", enabled: next.upiId } }));
     if (jobs.length) await Promise.all(jobs);
   }
 
@@ -298,6 +329,27 @@ function AdminPage() {
       if (gateWrites.current.fee !== rev) return;
       setFeeOn(!enabled);
       setError(en ? "Could not update the fee setting." : "फीस की सेटिंग नहीं बदली।");
+    }
+  }
+
+  async function flipPay(field: "upiApps" | "cards" | "qr" | "upiId", key: "pay_upi_apps" | "pay_cards" | "pay_qr" | "pay_upi_id", enabled: boolean) {
+    if (!token) return;
+    const rev = ++gateWrites.current[field];
+    const setOn = field === "upiApps" ? setUpiAppsOn : field === "cards" ? setCardsOn : field === "qr" ? setQrOn : setUpiIdOn;
+    setOn(enabled);
+    setError("");
+    try {
+      const result = await setPayGate({ data: { token, key, enabled } });
+      if (gateWrites.current[field] !== rev) return;
+      setUpiAppsOn(result.upiApps);
+      setCardsOn(result.cards);
+      setQrOn(result.qr);
+      setUpiIdOn(result.upiId);
+      keep({ upiApps: result.upiApps, cards: result.cards, qr: result.qr, upiId: result.upiId });
+    } catch {
+      if (gateWrites.current[field] !== rev) return;
+      setOn(!enabled);
+      setError(en ? "Could not update the payment setting." : "पेमेंट की सेटिंग नहीं बदली।");
     }
   }
 
@@ -606,6 +658,32 @@ function AdminPage() {
               </span>
               <span className="font-plain text-lg font-bold text-navy">{feeOn ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
             </button>
+            <div className="mt-4 grid w-full gap-3 border-t border-line pt-4">
+              {(
+                [
+                  ["upiApps", "pay_upi_apps", upiAppsOn, en ? "UPI Payment Apps" : "यूपीआई पेमेंट ऐप्स"],
+                  ["cards", "pay_cards", cardsOn, en ? "Debit Card, Credit Card" : "डेबिट कार्ड, क्रेडिट कार्ड"],
+                  ["qr", "pay_qr", qrOn, en ? "QR Code" : "QR कोड"],
+                  ["upiId", "pay_upi_id", upiIdOn, en ? "UPI ID" : "यूपीआई आईडी"],
+                ] as const
+              ).map(([field, key, on, label]) => (
+                <div key={field} className="flex items-center justify-between gap-3">
+                  <span className="font-plain text-base font-bold text-navy">{label}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    {...tapProps(field, () => void flipPay(field, key, !on))}
+                    className="inline-flex min-h-11 items-center gap-3 touch-manipulation"
+                  >
+                    <span className={`relative h-7 w-12 shrink-0 rounded-full ${on ? "bg-navy" : "bg-[#cfc6b4]"}`}>
+                      <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow ${on ? "left-5" : "left-0.5"}`} />
+                    </span>
+                    <span className="font-plain text-sm font-bold text-navy">{on ? (en ? "Enable" : "इनेबल") : en ? "Disable" : "डिसेबल"}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="mt-4 rounded-3xl border border-line bg-paper p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -830,24 +908,24 @@ function AdminPage() {
                         <button
                           type="button"
                           {...tapProps(`down-${row.id}`, () => {
-  setDownId(row.id);
-  void (async () => {
-    const detail = open?.id === row.id ? open : await adminOne({ data: { token, id: row.id } });
-    if (!detail) return;
-    const { downloadAdmissionPdf } = await import("@/lib/admission-pdf");
-    await downloadAdmissionPdf(
-      {
-        ...detail.form,
-        studentSign: signOn && applicantOn ? detail.form.studentSign : "",
-        parentSign: signOn && parentOn ? detail.form.parentSign : "",
-      },
-      detail.serial,
-      true,
-      managerOn ? managerImage : "",
-      padOn ? padImage : "",
-    );
-  })();
-})} 
+                            setDownId(row.id);
+                            void (async () => {
+                              const detail = open?.id === row.id ? open : await adminOne({ data: { token, id: row.id } });
+                              if (!detail) return;
+                              const { downloadAdmissionPdf } = await import("@/lib/admission-pdf");
+                              await downloadAdmissionPdf(
+                                {
+                                  ...detail.form,
+                                  studentSign: signOn && applicantOn ? detail.form.studentSign : "",
+                                  parentSign: signOn && parentOn ? detail.form.parentSign : "",
+                                },
+                                detail.serial,
+                                true,
+                                managerOn ? managerImage : "",
+                                padOn ? padImage : "",
+                              );
+                            })();
+                          })}
                           className={`inline-flex min-h-11 items-center rounded-full px-4 font-semibold touch-manipulation ${downId === row.id ? "bg-navy text-ivory" : "border border-navy bg-white text-navy"}`}
                         >
                           {en ? "Download" : "डाउनलोड"}

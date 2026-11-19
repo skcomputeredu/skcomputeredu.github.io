@@ -161,9 +161,7 @@ function Home() {
           <div>
             <div className="flex items-center gap-3">
               <SkLogoClassic className="size-24 md:size-28" />
-              <Eyebrow>
-                <span className="text-gold">{c.admission}</span>
-              </Eyebrow>
+              <p className="min-w-0 whitespace-nowrap font-display text-[clamp(1.2rem,6.3vw,2.4rem)] leading-none font-medium tracking-tight text-gold uppercase">{c.admission}</p>
             </div>
             <h1 className="mt-4">
               <CentreName tone="gold" look="display" className="text-[clamp(1.9rem,6.5vw,3.5rem)]" />

@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FeeMethods } from "@/components/fee-pay";
+import { LegalLinks } from "@/components/legal-links";
 import { PaySlipView } from "@/components/pay-slip";
 import { readFeeGate, recordFee, type Slip } from "@/lib/admissions";
 import { useI18n } from "@/lib/i18n";
 import { UPI_ID } from "@/lib/site";
+import type { PayDone } from "@/lib/pay-ref";
 
 export const Route = createFileRoute("/pay")({
   head: () => ({
@@ -19,7 +21,7 @@ const field =
 function PayPage() {
   const { lang } = useI18n();
   const en = lang === "en";
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("500");
   const [payerUpi, setPayerUpi] = useState("");
   const [student, setStudent] = useState("");
   const [mobile, setMobile] = useState("");
@@ -45,37 +47,41 @@ function PayPage() {
     }
   }
 
-  async function markPaid(method: string) {
+  async function markPaid(info: PayDone) {
+    if (!info.ok) return;
     setError("");
-    if (!/^\d{1,6}(\.\d{1,2})?$/.test(amount)) {
+    const paidAmount = info.amount || amount;
+    if (!/^\d{1,6}(\.\d{1,2})?$/.test(paidAmount)) {
       setError(en ? "Write the amount." : "रकम लिखें।");
-      return;
+      return false;
     }
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       setError(en ? "Write the 10-digit mobile." : "10 अंक का मोबाइल लिखें।");
-      return;
+      return false;
     }
     const id = serial ? Number(serial) : 0;
     if (serial && (!Number.isInteger(id) || id < 1)) {
       setError(en ? "Write a valid serial, or leave it empty." : "सही क्रम संख्या लिखें, या खाली छोड़ें।");
-      return;
+      return false;
     }
     if (!id && student.trim().length < 2) {
       setError(en ? "Write the student name, or the registration serial." : "विद्यार्थी का नाम लिखें, या रजिस्ट्रेशन क्रम संख्या।");
-      return;
+      return false;
     }
     setSaving(true);
     try {
       const result = await recordFee({
-        data: { serial: id, mobile, student: student.trim(), amount, method, payerUpi: payerUpi.trim() },
+        data: { serial: id, mobile, student: student.trim(), amount: paidAmount, method: info.method, payerUpi: payerUpi.trim(), txn: info.txn, utr: info.utr },
       });
       if (!result.ok) {
         setError(en ? "This serial and mobile do not match a form." : "यह क्रम और मोबाइल किसी फ़ॉर्म से नहीं मिलते।");
-        return;
+        return false;
       }
       setSlip(result.slip);
+      return true;
     } catch {
       setError(en ? "Could not save the payment." : "भुगतान सेव नहीं हुआ।");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -107,7 +113,10 @@ function PayPage() {
           <input className={`${field} sm:col-span-2`} inputMode="numeric" value={serial} placeholder={en ? "Registration serial, if the form is already submitted" : "रजिस्ट्रेशन क्रम संख्या, अगर फ़ॉर्म भर चुके हैं"} onChange={(event) => setSerial(event.target.value.replace(/\D/g, "").slice(0, 8))} />
         </div>
         <div className="mt-4">
-          <FeeMethods en={en} amount={amount} onAmount={setAmount} payerUpi={payerUpi} onPayerUpi={setPayerUpi} onMarkPaid={saving ? () => undefined : markPaid} />
+          <FeeMethods en={en} amount={amount} onAmount={setAmount} payerUpi={payerUpi} onPayerUpi={setPayerUpi} />
+        </div>
+        <div className="mt-4">
+          <LegalLinks />
         </div>
         {error ? <p className="mt-4 text-sm font-medium text-[#c5161d]">{error}</p> : null}
       </div>

@@ -81,6 +81,29 @@ function ContactPage() {
         </dl>
       </div>
       <Enquiry />
+      <section className="grid gap-4 md:col-span-2 md:grid-cols-3">
+        <article className="rounded-3xl border border-line bg-paper p-5">
+          <h2 className="font-display text-2xl text-navy">{en ? "Working Hours" : "समय"}</h2>
+          <p className="mt-3 text-base leading-6 text-ink">{en ? "Monday to Saturday: 8:00 AM – 8:00 PM" : "सोमवार से शनिवार: सुबह 8 बजे से रात 8 बजे"}</p>
+          <p className="text-base leading-6 text-ink">{en ? "Sunday: Closed" : "रविवार: बंद"}</p>
+        </article>
+        <article className="rounded-3xl border border-line bg-paper p-5">
+          <h2 className="font-display text-2xl text-navy">{en ? "Admission & Course Counseling" : "एडमिशन और काउंसलिंग"}</h2>
+          <p className="mt-3 text-base leading-7 text-ink">
+            {en
+              ? "Students interested in CCC, Tally Prime, O-Level, Typing, Programming, or Basic Computer can visit between 8:00 AM and 8:00 PM for free career counseling, or book a seat online by paying the ₹500 registration fee."
+              : "CCC, Tally Prime, O-Level, टाइपिंग, प्रोग्रामिंग या बेसिक कंप्यूटर के लिए सुबह 8 से रात 8 बजे तक मुफ़्त काउंसलिंग है। ऑनलाइन सीट ₹500 रजिस्ट्रेशन फीस से बुक होती है।"}
+          </p>
+        </article>
+        <article className="rounded-3xl border border-line bg-paper p-5">
+          <h2 className="font-display text-2xl text-navy">{en ? "Online Fee Payment Support" : "ऑनलाइन फीस सहायता"}</h2>
+          <p className="mt-3 text-base leading-7 text-ink">
+            {en
+              ? "If a payment is deducted and no receipt is generated, call or WhatsApp +91 8410932860, or email skcomputerbly@gmail.com. Share your full name, registered mobile, payment date, amount, and transaction ID or UTR. We reply within 24 working hours."
+              : "अगर पैसा कट जाए और रसीद न बने, तो +91 8410932860 पर कॉल या WhatsApp करें, या skcomputerbly@gmail.com पर लिखें। नाम, रजिस्टर्ड मोबाइल, तारीख, रकम और ट्रांज़ैक्शन आईडी या UTR भेजें। जवाब 24 कार्य घंटों में।"}
+          </p>
+        </article>
+      </section>
     </div>
   );
 }

@@ -2,8 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { WhatsAppIcon } from "@/components/bits";
 import { FeeMethods } from "@/components/fee-pay";
+import { LegalLinks } from "@/components/legal-links";
+import { TermsPolicyBody } from "@/routes/terms";
 import { FilledForm } from "@/components/filled-form";
-import { readFeeGate, readManagerSign, readSignGate, readUploadGates, saveUploadChunk, submitAdmission, type AdmissionForm } from "@/lib/admissions";
+import { readFeeGate, readManagerSign, readPayGates, readSignGate, readUploadGates, saveUploadChunk, submitAdmission, type AdmissionForm } from "@/lib/admissions";
+import type { PayDone } from "@/lib/pay-ref";
 import { courses, presentCourse } from "@/lib/courses";
 import { useI18n } from "@/lib/i18n";
 import { PHONE_TEL, whatsappLink } from "@/lib/site";
@@ -111,12 +114,16 @@ const unpaid: {
   paymentAmount: string;
   paymentAt: string;
   payerUpi: string;
+  paymentTxn: string;
+  paymentUtr: string;
 } = {
   paymentStatus: "Not paid",
   paymentMethod: "",
   paymentAmount: "",
   paymentAt: "",
   payerUpi: "",
+  paymentTxn: "",
+  paymentUtr: "",
 };
 
 const field =
@@ -154,6 +161,7 @@ function RegistrationPage() {
   const [managerSign, setManagerSignImage] = useState("");
   const [managerPad, setManagerPad] = useState("");
   const [uploads, setUploads] = useState({ photo: true, document: true, aadhaar: true, signature: true });
+  const [payUi, setPayUi] = useState({ upiApps: true, cards: true, qr: true, upiId: true });
   const [waNote, setWaNote] = useState("");
   const [payerUpi, setPayerUpi] = useState("");
   const [paid, setPaid] = useState(unpaid);
@@ -214,6 +222,9 @@ function RegistrationPage() {
     readUploadGates({ data: {} })
       .then((gate) => setUploads(gate))
       .catch(() => setUploads({ photo: true, document: true, aadhaar: true, signature: true }));
+    readPayGates({ data: {} })
+      .then((gate) => setPayUi(gate))
+      .catch(() => setPayUi({ upiApps: true, cards: true, qr: true, upiId: true }));
   }, []);
 
   async function takeFile(file: File | undefined, kind: "photo" | "doc" | "aadhaar" | "sign") {
@@ -551,19 +562,24 @@ function RegistrationPage() {
     });
   }
 
-  function markPaid(method: string) {
-    if (!/^\d{1,6}(\.\d{1,2})?$/.test(amount)) {
+  function markPaid(info: PayDone) {
+    if (!info.ok) return;
+    const paidAmount = info.amount || amount;
+    if (!/^\d{1,6}(\.\d{1,2})?$/.test(paidAmount)) {
       setError(en ? "Write the fee amount before marking paid." : "Paid करने से पहले फीस की रकम लिखें।");
-      return;
+      return false;
     }
     setError("");
     setPaid({
       paymentStatus: "Paid",
-      paymentMethod: method,
-      paymentAmount: amount,
+      paymentMethod: info.method,
+      paymentAmount: paidAmount,
       paymentAt: new Date().toISOString(),
       payerUpi: payerUpi.trim(),
+      paymentTxn: info.txn,
+      paymentUtr: info.utr,
     });
+    return true;
   }
 
   function onPreview() {
@@ -597,7 +613,7 @@ function RegistrationPage() {
     `${en ? "Aadhaar" : "आधार"}: ${draft.aadhaar || "—"}`,
     `${en ? "Father" : "पिता"}: ${draft.father}`,
     `${en ? "Mother" : "माता"}: ${draft.mother}`,
-    `${en ? "Husband" : "पति"}: ${draft.husband || "—"}`,
+    `${en ? "Spouse" : "जीवनसाथी"}: ${draft.husband || "—"}`,
     `${en ? "Occupation" : "व्यवसाय"}: ${draft.occupation || "—"}`,
     `${en ? "Qualification" : "योग्यता"}: ${draft.qualification || "—"}`,
     `${en ? "School" : "स्कूल"}: ${draft.school || "—"}`,
@@ -640,7 +656,7 @@ function RegistrationPage() {
         aadhaar: "Aadhaar number",
         father: "Father’s name",
         mother: "Mother’s name",
-        husband: "Husband’s name",
+        husband: "Spouse Name",
         occupation: "Occupation",
         qualification: "Qualification",
         school: "School or college",
@@ -715,7 +731,7 @@ function RegistrationPage() {
         aadhaar: "आधार नंबर",
         father: "पिता का नाम",
         mother: "माता का नाम",
-        husband: "पति का नाम",
+        husband: "जीवनसाथी का नाम",
         occupation: "व्यवसाय",
         qualification: "योग्यता",
         school: "स्कूल या कॉलेज",
@@ -1081,8 +1097,15 @@ function RegistrationPage() {
             {t.showPay}
           </button>
           {payOpen ? (
-            <FeeMethods en={en} amount={amount} onAmount={setAmount} payerUpi={payerUpi} onPayerUpi={setPayerUpi} onMarkPaid={markPaid} />
+            <FeeMethods en={en} amount={amount} onAmount={setAmount} payerUpi={payerUpi} onPayerUpi={setPayerUpi} showUpiApps={payUi.upiApps} showCards={payUi.cards} showQr={payUi.qr} showUpiId={payUi.upiId} />
           ) : null}
+          <details className="text-sm text-navy">
+            <summary className="w-fit cursor-pointer text-xs font-semibold text-[#1d4ed8] underline">T&C Apply</summary>
+            <div className="mt-3 space-y-2 text-xs leading-5 text-ink">
+              <h3 className="font-plain text-sm font-bold text-navy">Terms & Conditions</h3>
+              <TermsPolicyBody />
+            </div>
+          </details>
           <p className={`font-plain text-lg font-bold ${paid.paymentStatus === "Paid" ? "text-[#0d7a32]" : "text-[#c5161d]"}`}>
             {paid.paymentStatus === "Paid" ? "Paid" : "Not paid"}
           </p>
@@ -1213,6 +1236,9 @@ function RegistrationPage() {
           ) : null}
         </div>
       ) : null}
+      <div className="no-print mt-10">
+        <LegalLinks />
+      </div>
     </div>
   );
 }
