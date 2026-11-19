@@ -14,6 +14,8 @@ export function PaySlipView({ slip, lang }: { slip: Slip; lang: Lang }) {
     [en ? "Student's name" : "विद्यार्थी का नाम", slip.student || "—"],
     [en ? "Mobile" : "मोबाइल", slip.mobile],
     [en ? "Amount" : "रकम", slip.amount ? `Rs ${slip.amount}` : "—"],
+    [en ? "Transaction ID" : "ट्रांज़ैक्शन आईडी", slip.txn || "—"],
+    [en ? "UTR Number" : "UTR नंबर", slip.utr || "—"],
     [en ? "Method" : "माध्यम", slip.method || "—"],
     [en ? "Payer UPI" : "भुगतानकर्ता UPI", slip.payerUpi || "—"],
     [en ? "Time" : "समय", when],

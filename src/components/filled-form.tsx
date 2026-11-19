@@ -45,7 +45,7 @@ const rows: { key: keyof AdmissionForm; en: string; hi: string }[] = [
   { key: "aadhaar", en: "Aadhaar Number", hi: "आधार नंबर" },
   { key: "father", en: "Father's Name", hi: "पिता का नाम" },
   { key: "mother", en: "Mother's Name", hi: "माता का नाम" },
-  { key: "husband", en: "Husband's Name", hi: "पति का नाम" },
+  { key: "husband", en: "Spouse Name", hi: "जीवनसाथी का नाम" },
   { key: "occupation", en: "Occupation", hi: "व्यवसाय" },
   { key: "qualification", en: "Qualification", hi: "योग्यता" },
   { key: "school", en: "School Or College", hi: "स्कूल या कॉलेज" },
@@ -106,7 +106,7 @@ export function FilledForm({
     [en ? "Student's Name" : "विद्यार्थी का नाम", labelOf(form.student, "student", en)],
     [en ? "Father's Name" : "पिता का नाम", labelOf(form.father, "father", en)],
     [en ? "Mother's Name" : "माता का नाम", labelOf(form.mother, "mother", en)],
-    [en ? "Husband's Name" : "पति का नाम", labelOf(form.husband, "husband", en)],
+    [en ? "Spouse Name" : "जीवनसाथी का नाम", labelOf(form.husband, "husband", en)],
     [en ? "Gender" : "लिंग", labelOf(form.gender, "gender", en)],
     [en ? "Marital Status" : "वैवाहिक स्थिति", labelOf(form.marital, "marital", en)],
     [en ? "Date Of Birth" : "जन्म तिथि", labelOf(form.dob, "dob", en)],
@@ -167,12 +167,12 @@ export function FilledForm({
         </p>
         {downloads && serial && downloadToken ? (
           <button
-  type="button"
-  onClick={() => saveFormPdf(form, serial, managerSign, managerPad, true)}
-  className="no-print inline-flex min-h-11 items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy touch-manipulation"
->
-  {en ? "Download form" : "फ़ॉर्म डाउनलोड"}
-</button> 
+            type="button"
+            onClick={() => saveFormPdf(form, serial, managerSign, managerPad, true)}
+            className="no-print inline-flex min-h-11 items-center rounded-full border border-navy px-4 text-sm font-semibold text-navy touch-manipulation"
+          >
+            {en ? "Download form" : "फ़ॉर्म डाउनलोड"}
+          </button>
         ) : null}
       </div>
       <dl className="a4-fields-stack mt-4">

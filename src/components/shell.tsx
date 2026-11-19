@@ -3,6 +3,7 @@ import { MapPin, Menu, Phone, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { SkLogo, SkLogoClassic } from "@/components/logo";
 import { EmailLink, SiteLink, WhatsAppIcon, CentreName } from "@/components/bits";
+import { LegalLinks } from "@/components/legal-links";
 import { useCopy, useI18n } from "@/lib/i18n";
 import { courses, presentCourse } from "@/lib/courses";
 import { addressFor, MAPS_URL, PHONE_DISPLAY, PHONE_TEL, whatsappLink } from "@/lib/site";
@@ -165,18 +166,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <WhatsAppIcon className="size-9 shrink-0" />
               {t.waWrite}
             </a>
-            <a href={MAPS_URL} className="mt-4 block text-sm text-brass">
-              {address}
+            <a href={MAPS_URL} className="mt-4 block text-sm leading-6 text-brass">
+              {lang === "hi" ? (
+                <>
+                  डिफेंस कॉलोनी, एयर फ़ोर्स गेट, इज़्ज़त नगर,
+                  <br />
+                  बरेली, UP-243122
+                </>
+              ) : (
+                <>
+                  Defence Colony, Air Force Gate, Izzat Nagar,
+                  <br />
+                  Bareilly, UP-243122
+                </>
+              )}
             </a>
             <SiteLink className="mt-3 text-sm text-gold" />
             <EmailLink className="mt-2 text-sm text-brass" iconClassName="size-4 text-gold" />
             <p className="mt-4 text-sm text-brass">{t.batches}</p>
           </div>
         </div>
-        <div className="border-t border-ivory/15">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 text-xs text-brass">
-            <p>{t.footerMeta}</p>
-            <p>{t.footerTag}</p>
+        <div className="border-t border-ivory/15 max-md:pb-16">
+          <div className="mx-auto w-full max-w-6xl px-2 py-3 md:px-4">
+            <LegalLinks light />
           </div>
         </div>
       </footer>
