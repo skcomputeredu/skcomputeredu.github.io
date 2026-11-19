@@ -176,19 +176,8 @@ function RegistrationPage() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("sk-registration-draft");
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as Partial<Draft>;
-      setDraft({ ...empty, ...parsed });
-    } catch {
-      window.localStorage.removeItem("sk-registration-draft");
-    }
+    window.localStorage.removeItem("sk-registration-draft");
   }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("sk-registration-draft", JSON.stringify(draft));
-  }, [draft]);
 
   useEffect(() => {
     const next = percent(draft.marksGot, draft.marksTotal);
