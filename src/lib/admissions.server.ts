@@ -65,6 +65,8 @@ function slipFrom(serial: number, form: Partial<AdmissionForm>, at: string): Sli
     status: form.paymentStatus === "Paid" ? "Paid" : "Not paid",
     at: form.paymentAt || at,
     payerUpi: form.payerUpi || "",
+    txn: form.paymentTxn || "",
+    utr: form.paymentUtr || "",
   };
 }
 
@@ -451,6 +453,35 @@ export async function writeUploadGate(token: string, key: UploadKey, enabled: bo
   return uploadGates();
 }
 
+const payKeys = ["pay_upi_apps", "pay_cards", "pay_qr", "pay_upi_id"] as const;
+type PayKey = (typeof payKeys)[number];
+
+export async function payGates() {
+  const sql = await getSql();
+  const rows = await sql<{ key: string; value: string }>`
+    select key, value from site_settings
+    where key in ('pay_upi_apps', 'pay_cards', 'pay_qr', 'pay_upi_id')
+  `;
+  const off = new Set(rows.filter((row) => row.value === "off").map((row) => row.key));
+  return {
+    upiApps: !off.has("pay_upi_apps"),
+    cards: !off.has("pay_cards"),
+    qr: !off.has("pay_qr"),
+    upiId: !off.has("pay_upi_id"),
+  };
+}
+
+export async function writePayGate(token: string, key: PayKey, enabled: boolean) {
+  if (!payKeys.includes(key)) throw new Error("bad");
+  const sql = await requireToken(token);
+  const value = enabled ? "on" : "off";
+  await sql`
+    insert into site_settings (key, value) values (${key}, ${value})
+    on conflict (key) do update set value = excluded.value
+  `;
+  return payGates();
+}
+
 export async function recordFeePayment(input: {
   serial: number;
   mobile: string;
@@ -458,6 +489,8 @@ export async function recordFeePayment(input: {
   amount: string;
   method: string;
   payerUpi: string;
+  txn?: string;
+  utr?: string;
 }) {
   const sql = await getSql();
   await ensureSerials(sql);
@@ -476,6 +509,8 @@ export async function recordFeePayment(input: {
       paymentAmount: input.amount,
       paymentAt: at,
       payerUpi: input.payerUpi,
+      paymentTxn: input.txn || form.paymentTxn || "",
+      paymentUtr: input.utr || form.paymentUtr || "",
     };
     await sql`update admissions set form = ${JSON.stringify(next)}::jsonb where id = ${row.id}`;
     await sql`
@@ -502,6 +537,8 @@ export async function recordFeePayment(input: {
       status: "Paid" as const,
       at,
       payerUpi: input.payerUpi,
+      txn: input.txn || "",
+      utr: input.utr || "",
     },
   };
 }
@@ -542,6 +579,8 @@ export async function findSlip(serial: number, mobile: string) {
     status: pay.status === "Paid" ? "Paid" : "Not paid",
     at: created,
     payerUpi: pay.payer_upi || "",
+    txn: "",
+    utr: "",
   };
   return { ok: true as const, slip };
 }

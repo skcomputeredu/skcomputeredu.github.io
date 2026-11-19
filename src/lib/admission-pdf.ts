@@ -698,7 +698,7 @@ export async function buildAdmissionPdf(form: AdmissionForm, serial: number, inc
   await row("Student's Name", form.student);
   await row("Father's Name", form.father);
   await row("Mother's Name", form.mother);
-  await row("Husband's Name", form.husband);
+  await row("Spouse Name", form.husband);
   await row("Gender", form.gender);
   await row("Marital Status", form.marital || "-");
   await row("Date Of Birth", form.dob);
@@ -818,7 +818,7 @@ export async function buildAdmissionPdf(form: AdmissionForm, serial: number, inc
       ["Aadhaar Number", form.aadhaar || "-"],
       ["Father's Name", form.father || "-"],
       ["Mother's Name", form.mother || "-"],
-      ["Husband's Name", form.husband || "-"],
+      ["Spouse Name", form.husband || "-"],
       ["Occupation", form.occupation || "-"],
       ["Qualification", form.qualification || "-"],
       ["School Or College", form.school || "-"],

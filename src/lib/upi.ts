@@ -9,14 +9,21 @@ export const PAY_APPS = [
 
 export type PayAppName = (typeof PAY_APPS)[number]["name"];
 
+export function payAmount(raw: string) {
+  const cleaned = (raw || "").replace(/[^\d.]/g, "");
+  const value = Number(cleaned);
+  if (!cleaned || !Number.isFinite(value) || value <= 0) return "500.00";
+  return value.toFixed(2);
+}
+
 function query(amount: string, note: string) {
   const params = new URLSearchParams({
     pa: UPI_ID,
     pn: "SK Computer & Education Centre",
+    am: payAmount(amount),
     cu: "INR",
     tn: note,
   });
-  if (amount) params.set("am", amount);
   return params.toString();
 }
 

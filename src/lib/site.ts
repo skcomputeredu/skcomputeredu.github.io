@@ -13,8 +13,8 @@ export const CENTRE_NAME = "SK Computer & Education Centre";
 export const SITE_HOST = "skcomputeredu.github.io";
 export const SITE_URL = "https://skcomputeredu.github.io";
 export const SITE_LABEL = "skcomputeredu.github.io";
-export const EMAIL = "skcomputeronline12@gmail.com";
-export const EMAIL_MAILTO = "mailto:skcomputeronline12@gmail.com";
+export const EMAIL = "skcomputerbly@gmail.com";
+export const EMAIL_MAILTO = "mailto:skcomputerbly@gmail.com";
 export const UPI_ID = "sksir@ptaxis";
 export const UPI_PAY = "upi://pay?pa=sksir@ptaxis&pn=SK%20Computer%20%26%20Education%20Centre&cu=INR";
 

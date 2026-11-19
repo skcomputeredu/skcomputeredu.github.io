@@ -46,6 +46,8 @@ export const admissionSchema = z.object({
   paymentAmount: text,
   paymentAt: text,
   payerUpi: text.max(80),
+  paymentTxn: text.max(40).default(""),
+  paymentUtr: text.max(40).default(""),
 });
 
 export type AdmissionForm = z.infer<typeof admissionSchema>;
@@ -68,6 +70,8 @@ export type Slip = {
   status: "Paid" | "Not paid";
   at: string;
   payerUpi: string;
+  txn: string;
+  utr: string;
 };
 
 const feeInput = z.object({
@@ -77,6 +81,8 @@ const feeInput = z.object({
   amount: z.string().regex(/^\d{1,6}(\.\d{1,2})?$/),
   method: z.string().trim().min(2).max(40),
   payerUpi: z.string().trim().max(80),
+  txn: z.string().trim().max(40).default(""),
+  utr: z.string().trim().max(40).default(""),
 });
 
 export const saveUploadChunk = createServerFn({ method: "POST" })
@@ -218,6 +224,22 @@ export const setManagerSign = createServerFn({ method: "POST" })
   });
 
 const uploadKey = z.enum(["upload_photo", "upload_document", "upload_aadhaar", "upload_signature"]);
+
+export const readPayGates = createServerFn({ method: "POST" })
+  .validator((input: unknown) => z.object({}).parse(input ?? {}))
+  .handler(async () => {
+    const { payGates } = await import("./admissions.server");
+    return payGates();
+  });
+
+export const setPayGate = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z.object({ token: z.string().min(20), key: z.enum(["pay_upi_apps", "pay_cards", "pay_qr", "pay_upi_id"]), enabled: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { writePayGate } = await import("./admissions.server");
+    return writePayGate(data.token, data.key, data.enabled);
+  });
 
 export const readUploadGates = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({}).parse(input ?? {}))
