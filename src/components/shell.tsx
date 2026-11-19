@@ -124,7 +124,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <footer className="no-print mt-8 bg-navy text-ivory">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 md:grid-cols-4">
           <div className="md:col-span-2">
-            <SkLogoClassic className="size-16" />
+            <div className="flex items-center gap-3">
+              <SkLogoClassic className="size-24 shrink-0 md:size-28" />
+              {pathname === "/" ? (
+                <p className="min-w-0 whitespace-nowrap font-display text-[clamp(1.2rem,6.3vw,2.4rem)] leading-none font-medium tracking-tight text-gold uppercase">
+                  Admission open
+                </p>
+              ) : null}
+            </div>
             <p className="mt-4 font-display text-3xl">{t.footerTag}</p>
             <p className="mt-3">
               <CentreName tone="gold" look="solid" className="text-[clamp(1.15rem,3.2vw,1.7rem)]" />
