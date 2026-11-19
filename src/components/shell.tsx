@@ -126,11 +126,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="md:col-span-2">
             <div className="flex items-center gap-3">
               <SkLogoClassic className="size-24 shrink-0 md:size-28" />
-              {pathname === "/" ? (
-                <p className="min-w-0 whitespace-nowrap font-display text-[clamp(1.2rem,6.3vw,2.4rem)] leading-none font-medium tracking-tight text-gold uppercase">
-                  Admission open
-                </p>
-              ) : null}
+              <p className="min-w-0 whitespace-nowrap font-display text-[clamp(1.2rem,6.3vw,2.4rem)] leading-none font-medium tracking-tight text-gold uppercase">
+                Admission open
+              </p>
             </div>
             <p className="mt-4 font-display text-3xl">{t.footerTag}</p>
             <p className="mt-3">
