@@ -18,12 +18,16 @@ import { Route as DownloadRouteImport } from './routes/download'
 import { Route as FeesRouteImport } from './routes/fees'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PayRouteImport } from './routes/pay'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RefundRouteImport } from './routes/refund'
 import { Route as RegistrationRouteImport } from './routes/registration'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SlipRouteImport } from './routes/slip'
 import { Route as StudyRouteImport } from './routes/study'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TuitionRouteImport } from './routes/tuition'
 import { Route as ApiAdmissionPdfRouteImport } from './routes/api/admission-pdf'
+import { Route as ApiUpiOpenRouteImport } from './routes/api/upi-open'
 import { Route as CourseSlugRouteImport } from './routes/course.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +75,16 @@ const PayRoute = PayRouteImport.update({
   path: '/pay',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegistrationRoute = RegistrationRouteImport.update({
   id: '/registration',
   path: '/registration',
@@ -91,6 +105,11 @@ const StudyRoute = StudyRouteImport.update({
   path: '/study',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TuitionRoute = TuitionRouteImport.update({
   id: '/tuition',
   path: '/tuition',
@@ -99,6 +118,11 @@ const TuitionRoute = TuitionRouteImport.update({
 const ApiAdmissionPdfRoute = ApiAdmissionPdfRouteImport.update({
   id: '/api/admission-pdf',
   path: '/api/admission-pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUpiOpenRoute = ApiUpiOpenRouteImport.update({
+  id: '/api/upi-open',
+  path: '/api/upi-open',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CourseSlugRoute = CourseSlugRouteImport.update({
@@ -117,12 +141,16 @@ export interface FileRoutesByFullPath {
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
   '/pay': typeof PayRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/registration': typeof RegistrationRoute
   '/settings': typeof SettingsRoute
   '/slip': typeof SlipRoute
   '/study': typeof StudyRoute
+  '/terms': typeof TermsRoute
   '/tuition': typeof TuitionRoute
   '/api/admission-pdf': typeof ApiAdmissionPdfRoute
+  '/api/upi-open': typeof ApiUpiOpenRoute
   '/course/$slug': typeof CourseSlugRoute
 }
 export interface FileRoutesByTo {
@@ -135,12 +163,16 @@ export interface FileRoutesByTo {
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
   '/pay': typeof PayRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/registration': typeof RegistrationRoute
   '/settings': typeof SettingsRoute
   '/slip': typeof SlipRoute
   '/study': typeof StudyRoute
+  '/terms': typeof TermsRoute
   '/tuition': typeof TuitionRoute
   '/api/admission-pdf': typeof ApiAdmissionPdfRoute
+  '/api/upi-open': typeof ApiUpiOpenRoute
   '/course/$slug': typeof CourseSlugRoute
 }
 export interface FileRoutesById {
@@ -154,12 +186,16 @@ export interface FileRoutesById {
   '/fees': typeof FeesRoute
   '/login': typeof LoginRoute
   '/pay': typeof PayRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/registration': typeof RegistrationRoute
   '/settings': typeof SettingsRoute
   '/slip': typeof SlipRoute
   '/study': typeof StudyRoute
+  '/terms': typeof TermsRoute
   '/tuition': typeof TuitionRoute
   '/api/admission-pdf': typeof ApiAdmissionPdfRoute
+  '/api/upi-open': typeof ApiUpiOpenRoute
   '/course/$slug': typeof CourseSlugRoute
 }
 export interface FileRouteTypes {
@@ -174,12 +210,16 @@ export interface FileRouteTypes {
     | '/fees'
     | '/login'
     | '/pay'
+    | '/privacy'
+    | '/refund'
     | '/registration'
     | '/settings'
     | '/slip'
     | '/study'
+    | '/terms'
     | '/tuition'
     | '/api/admission-pdf'
+    | '/api/upi-open'
     | '/course/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -192,12 +232,16 @@ export interface FileRouteTypes {
     | '/fees'
     | '/login'
     | '/pay'
+    | '/privacy'
+    | '/refund'
     | '/registration'
     | '/settings'
     | '/slip'
     | '/study'
+    | '/terms'
     | '/tuition'
     | '/api/admission-pdf'
+    | '/api/upi-open'
     | '/course/$slug'
   id:
     | '__root__'
@@ -210,12 +254,16 @@ export interface FileRouteTypes {
     | '/fees'
     | '/login'
     | '/pay'
+    | '/privacy'
+    | '/refund'
     | '/registration'
     | '/settings'
     | '/slip'
     | '/study'
+    | '/terms'
     | '/tuition'
     | '/api/admission-pdf'
+    | '/api/upi-open'
     | '/course/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -229,12 +277,16 @@ export interface RootRouteChildren {
   FeesRoute: typeof FeesRoute
   LoginRoute: typeof LoginRoute
   PayRoute: typeof PayRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundRoute: typeof RefundRoute
   RegistrationRoute: typeof RegistrationRoute
   SettingsRoute: typeof SettingsRoute
   SlipRoute: typeof SlipRoute
   StudyRoute: typeof StudyRoute
+  TermsRoute: typeof TermsRoute
   TuitionRoute: typeof TuitionRoute
   ApiAdmissionPdfRoute: typeof ApiAdmissionPdfRoute
+  ApiUpiOpenRoute: typeof ApiUpiOpenRoute
   CourseSlugRoute: typeof CourseSlugRoute
 }
 
@@ -303,6 +355,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/registration': {
       id: '/registration'
       path: '/registration'
@@ -331,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tuition': {
       id: '/tuition'
       path: '/tuition'
@@ -343,6 +416,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admission-pdf'
       fullPath: '/api/admission-pdf'
       preLoaderRoute: typeof ApiAdmissionPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/upi-open': {
+      id: '/api/upi-open'
+      path: '/api/upi-open'
+      fullPath: '/api/upi-open'
+      preLoaderRoute: typeof ApiUpiOpenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/course/$slug': {
@@ -365,12 +445,16 @@ const rootRouteChildren: RootRouteChildren = {
   FeesRoute: FeesRoute,
   LoginRoute: LoginRoute,
   PayRoute: PayRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundRoute: RefundRoute,
   RegistrationRoute: RegistrationRoute,
   SettingsRoute: SettingsRoute,
   SlipRoute: SlipRoute,
   StudyRoute: StudyRoute,
+  TermsRoute: TermsRoute,
   TuitionRoute: TuitionRoute,
   ApiAdmissionPdfRoute: ApiAdmissionPdfRoute,
+  ApiUpiOpenRoute: ApiUpiOpenRoute,
   CourseSlugRoute: CourseSlugRoute,
 }
 export const routeTree = rootRouteImport
