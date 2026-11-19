@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { PayAppIcons } from "@/components/fee-pay";
 import { PaySlipView } from "@/components/pay-slip";
 import { readSlip, type Slip } from "@/lib/admissions";
 import { useI18n } from "@/lib/i18n";
@@ -56,10 +55,6 @@ function SlipPage() {
             {en ? "Show slip" : "स्लिप दिखाएँ"}
           </button>
           {error ? <p className="text-sm font-medium text-[#c5161d]">{error}</p> : null}
-          <div className="mt-2">
-            <p className="mb-2 font-plain text-sm font-bold text-navy">{en ? "Pay with" : "इनसे भुगतान"}</p>
-            <PayAppIcons amount="" />
-          </div>
         </div>
       </form>
       {slip ? (
